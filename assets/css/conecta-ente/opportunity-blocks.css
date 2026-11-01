@@ -1,0 +1,76 @@
+.conectaente-block {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 1.5rem 0;
+    padding: 1rem;
+}
+
+.conectaente-block > legend {
+    font-weight: bold;
+    padding: 0 .5rem;
+}
+
+.conectaente-block__question {
+    font-weight: bold;
+    margin: 0 0 .5rem;
+}
+
+.conectaente-block__radios label,
+.conectaente-block__check {
+    display: inline-block;
+    margin: 0 1rem .5rem 0;
+}
+
+.conectaente-block__row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: .25rem 0;
+}
+
+.conectaente-block__row input[type="number"],
+.conectaente-block__row input[type="text"],
+.conectaente-block__row input[type="email"] {
+    max-width: 18rem;
+}
+
+.conectaente-block__option {
+    margin: .5rem 0;
+}
+
+.conectaente-block__sub {
+    font-size: .9em;
+    margin: .5rem 0 .25rem 1.5rem;
+}
+
+.conectaente-block__option .conectaente-block__check {
+    margin-left: 1.5rem;
+}
+
+.conectaente-block__option > .conectaente-block__check:first-child {
+    margin-left: 0;
+}
+
+.conectaente-block__option textarea {
+    display: block;
+    margin: .5rem 0 0 1.5rem;
+    max-width: 30rem;
+    width: 100%;
+}
+
+.conectaente-block__table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.conectaente-block__table th,
+.conectaente-block__table td {
+    border-bottom: 1px solid #eee;
+    padding: .35rem .5rem;
+    text-align: left;
+}
+
+.conectaente-block__table input[type="number"] {
+    max-width: 9rem;
+}

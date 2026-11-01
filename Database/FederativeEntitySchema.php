@@ -2,10 +2,6 @@
 
 namespace ConectaEnte\Database;
 
-/**
- * SQL da tabela de entes federados. Fica fora do db-updates.php para poder ser conferido por teste
- * sem subir o App.
- */
 class FederativeEntitySchema
 {
     const TABLE = 'conectaente_federative_entity';
@@ -20,9 +16,6 @@ class FederativeEntitySchema
     const LEGACY_UNIQUE_SEAL = 'conectaente_ente_federado_seal_id_uq';
     const LEGACY_FK_SEAL = 'conectaente_ente_federado_seal_fk';
 
-    /**
-     * Renomeia a tabela antiga e tudo que a acompanha; os dados e o vínculo com o selo ficam como estão.
-     */
     public static function renameLegacyStatements()
     {
         return [

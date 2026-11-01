@@ -112,7 +112,6 @@ jQuery(function ($) {
     // verificação do token em andamento (ou null); o envio espera por ela para usar o nome sugerido
     var verifying = null;
 
-    // sugere o nome a partir do token, sem gravar; o campo continua editável
     $token.on('blur', function () {
         var token = $.trim($token.val());
         if (!token || $id.val() || $.trim($name.val())) {

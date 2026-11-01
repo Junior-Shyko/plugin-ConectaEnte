@@ -2,10 +2,7 @@
 
 namespace ConectaEnte\Vocabulary;
 
-/**
- * Formas de inscrição do contrato Conecta Ente (tipos_formas_inscricao).
- */
-class RegistrationForm extends AbstractVocabulary
+class RegistrationChannel extends AbstractVocabulary
 {
     const EMAIL = 'email';
     const IN_PERSON = 'presencial';

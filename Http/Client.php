@@ -22,9 +22,6 @@ class Client
         $this->transport = $transport ?: new CurlTransport();
     }
 
-    /**
-     * Cliente conforme `Config::mode()`: fixtures em modo dev (padrão), cURL real em modo live.
-     */
     public static function fromConfig()
     {
         $transport = Config::isLive() ? null : new FixtureTransport(__DIR__ . '/../fixtures');
@@ -77,18 +74,11 @@ class Client
         return TokenValidation::reject($this->readDetail($body, $response->getStatus(), $this->translate('A Plataforma CultBR recusou a verificação do token (HTTP %d).')));
     }
 
-    /**
-     * Responde sem token: separa "API fora do ar" de "credencial rejeitada".
-     */
     public function health()
     {
         return $this->transport->get($this->url('/health'))->getStatus() === 200;
     }
 
-    /**
-     * A árvore do PAR do ente dono do token. Fase 2 (issue de origem #37/#45) — só a assinatura
-     * existe aqui para o contrato do cliente já ficar fechado.
-     */
     public function getParInformation($token)
     {
         throw new \RuntimeException('getParInformation() é fase 2 — ver plan.md');

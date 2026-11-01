@@ -2,9 +2,6 @@
 
 namespace ConectaEnte\Vocabulary;
 
-/**
- * Segmentos culturais do SNIIC.
- */
 class Segment extends AbstractVocabulary
 {
     const COLLECTIONS = 'Acervos';
@@ -36,7 +33,6 @@ class Segment extends AbstractVocabulary
     const THEATER = 'Teatro';
     const OTHER = 'Outros';
 
-    /** "Outros" avisa que pede detalhamento. */
     protected static function texts()
     {
         return [self::OTHER => 'Outros (especificar)'];

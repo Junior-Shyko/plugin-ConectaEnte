@@ -7,10 +7,6 @@ use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use MapasCulturais\App;
 
-/**
- * Cadastro de entes federados (selo + token). Só o `saasSuperAdmin` acessa; a regra vive em
- * `FederativeEntityService`, aqui ficam autenticação, entrada e resposta HTTP.
- */
 class ConectaEnteController extends \MapasCulturais\Controller
 {
     public function GET_index()

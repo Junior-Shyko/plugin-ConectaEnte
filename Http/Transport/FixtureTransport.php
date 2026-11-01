@@ -5,9 +5,6 @@ namespace ConectaEnte\Http\Transport;
 use ConectaEnte\Http\Response;
 use MapasCulturais\App;
 
-/**
- * Em modo de desenvolvimento, a resposta vem de `fixtures/<rota>.json` em vez da API.
- */
 class FixtureTransport implements TransportInterface
 {
     private $directory;
@@ -52,7 +49,6 @@ class FixtureTransport implements TransportInterface
         return Response::failed('envio real não roda em modo simulado');
     }
 
-    // o último segmento nomeia a rota: /api/v1/par-information vira par-information
     private function routeOf($url)
     {
         $path = trim((string) parse_url($url, PHP_URL_PATH), '/');

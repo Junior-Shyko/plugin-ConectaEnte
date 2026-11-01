@@ -4,12 +4,15 @@ namespace Tests\ConectaEnte;
 
 use ConectaEnte\Vocabulary\AbstractVocabulary;
 use ConectaEnte\Vocabulary\AffirmativeAction;
-use ConectaEnte\Vocabulary\EditalType;
+use ConectaEnte\Vocabulary\AffirmativeActionGroup;
+use ConectaEnte\Vocabulary\FundingSource;
+use ConectaEnte\Vocabulary\LegalQuota;
+use ConectaEnte\Vocabulary\ExecutionType;
 use ConectaEnte\Vocabulary\ProponentType;
-use ConectaEnte\Vocabulary\RegistrationForm;
+use ConectaEnte\Vocabulary\RegistrationChannel;
 use ConectaEnte\Vocabulary\Segment;
-use ConectaEnte\Vocabulary\Stage;
-use ConectaEnte\Vocabulary\Territory;
+use ConectaEnte\Vocabulary\CulturalStage;
+use ConectaEnte\Vocabulary\PriorityTerritory;
 use ConectaEnte\Vocabulary\ThematicAgenda;
 use PHPUnit\Framework\TestCase;
 
@@ -27,19 +30,22 @@ class VocabularyTest extends TestCase
         'organizacoes_da_sociedade_civil_sem_fins_lucrativos',
     ];
 
-    const CONTRACT_REGISTRATION_FORMS = ['email', 'presencial', 'correio', 'oral', 'sistema', 'outros'];
+    const CONTRACT_REGISTRATION_CHANNELS = ['email', 'presencial', 'correio', 'oral', 'sistema', 'outros'];
 
     function vocabularies()
     {
         return [
             'ProponentType' => [ProponentType::class, 8],
-            'RegistrationForm' => [RegistrationForm::class, 6],
-            'EditalType' => [EditalType::class, 12],
+            'RegistrationChannel' => [RegistrationChannel::class, 6],
+            'ExecutionType' => [ExecutionType::class, 12],
             'Segment' => [Segment::class, 28],
-            'Stage' => [Stage::class, 11],
+            'CulturalStage' => [CulturalStage::class, 11],
             'ThematicAgenda' => [ThematicAgenda::class, 29],
-            'Territory' => [Territory::class, 13],
+            'PriorityTerritory' => [PriorityTerritory::class, 13],
             'AffirmativeAction' => [AffirmativeAction::class, 6],
+            'AffirmativeActionGroup' => [AffirmativeActionGroup::class, 9],
+            'LegalQuota' => [LegalQuota::class, 4],
+            'FundingSource' => [FundingSource::class, 5],
         ];
     }
 
@@ -120,12 +126,12 @@ class VocabularyTest extends TestCase
         $this->assertSame('Pontos de Cultura sem constituição jurídica', ProponentType::label('pontos_de_cultura_sem_constituicao_juridica'));
     }
 
-    function testRegistrationFormsAreExactlyTheContractOnes()
+    function testRegistrationChannelsAreExactlyTheContractOnes()
     {
-        $this->assertSame(self::CONTRACT_REGISTRATION_FORMS, RegistrationForm::cases());
-        $this->assertNull(RegistrationForm::tryFrom('correspondencia'));
-        $this->assertNull(RegistrationForm::tryFrom('oralidade'));
-        $this->assertSame('Sistema digital', RegistrationForm::label('sistema'));
+        $this->assertSame(self::CONTRACT_REGISTRATION_CHANNELS, RegistrationChannel::cases());
+        $this->assertNull(RegistrationChannel::tryFrom('correspondencia'));
+        $this->assertNull(RegistrationChannel::tryFrom('oralidade'));
+        $this->assertSame('Sistema digital', RegistrationChannel::label('sistema'));
     }
 
     function testEditalTypeListIsThePnabOne()
@@ -143,15 +149,15 @@ class VocabularyTest extends TestCase
             'Programa Nacional de Infraestrutura Cultural',
             'Programa Nacional de Formação para Gestores',
             'Outros',
-        ], EditalType::cases());
+        ], ExecutionType::cases());
     }
 
     function testValueIsTheTextWhereTheSniicListsKeyByLabel()
     {
         $this->assertSame('Teatro', Segment::label(Segment::THEATER));
         $this->assertSame('Outros (especificar)', Segment::label(Segment::OTHER));
-        $this->assertSame('Criação', Stage::label('Criação'));
-        $this->assertSame('Território rural', Territory::label(Territory::RURAL_TERRITORY));
+        $this->assertSame('Criação', CulturalStage::label('Criação'));
+        $this->assertSame('Território rural', PriorityTerritory::label(PriorityTerritory::RURAL_TERRITORY));
         $this->assertSame('Cultura Digital', ThematicAgenda::label(ThematicAgenda::DIGITAL_CULTURE));
     }
 
@@ -162,5 +168,35 @@ class VocabularyTest extends TestCase
             AffirmativeAction::cases()
         );
         $this->assertSame('Categoria específica', AffirmativeAction::label('categoria_especifica'));
+    }
+
+    function testBlockVocabulariesCarryTheV7BranchValues()
+    {
+        $this->assertSame(
+            ['Pessoas negras (pretas e pardas)', 'Pessoas indígenas', 'Pessoas com deficiência', 'Ampla concorrência'],
+            LegalQuota::cases()
+        );
+        $this->assertSame(['Pessoas negras (pretas e pardas)', 'Pessoas indígenas', 'Pessoas com deficiência'], LegalQuota::legal());
+        $this->assertSame(
+            ['recursosProprios', 'conveniosParcerias', 'emendasParlamentares', 'remanescentesCiclo1', 'outrasFontes'],
+            FundingSource::cases()
+        );
+        $this->assertSame(
+            ['pessoas_negras', 'pessoas_indigenas', 'pessoas_deficiencia', 'mulheres', 'povos_tradicionais', 'lgbtqiapn', 'pessoas_idosas', 'situacao_rua', 'outros_vulnerabilizados'],
+            AffirmativeActionGroup::cases()
+        );
+        $this->assertSame('LGBTQIAPN+', AffirmativeActionGroup::label('lgbtqiapn'));
+    }
+
+    function testAffirmativeActionKnowsWhichOnesNeedGroupsAndWhichIsExclusive()
+    {
+        foreach (['bonus_agentes', 'bonus_tematicas', 'categoria_especifica', 'edital_especifico'] as $value) {
+            $this->assertTrue(AffirmativeAction::hasGroups($value), $value);
+        }
+        $this->assertFalse(AffirmativeAction::hasGroups('nao_previstas'));
+        $this->assertFalse(AffirmativeAction::hasGroups('outra_legislacao'));
+        $this->assertTrue(AffirmativeAction::isExclusive('nao_previstas'));
+        $this->assertFalse(AffirmativeAction::isExclusive('bonus_agentes'));
+        $this->assertSame(140, AffirmativeAction::otherLegislationMaxLength());
     }
 }

@@ -6,7 +6,7 @@ namespace ConectaEnte\Vocabulary;
  * Formas de execução (tipoDeEdital) do Pnab. Sem equivalente no core nem no SNIIC: se o
  * Ministério publicar lista normativa, ela substitui esta.
  */
-class EditalType extends AbstractVocabulary
+class ExecutionType extends AbstractVocabulary
 {
     const CULTURAL_EXECUTION = 'Execução cultural';
     const CULTURAL_SPACE_SUBSIDY = 'Subsídio a espaços culturais';

@@ -2,9 +2,6 @@
 
 namespace ConectaEnte\Vocabulary;
 
-/**
- * Pautas temáticas do SNIIC.
- */
 class ThematicAgenda extends AbstractVocabulary
 {
     const FOOD_CULTURE = 'Cultura Alimentar';

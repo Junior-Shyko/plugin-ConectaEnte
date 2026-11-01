@@ -11,10 +11,6 @@ use MapasCulturais\i;
 use Respect\Validation\Rules\IntVal;
 use Respect\Validation\Rules\NotEmpty;
 
-/**
- * Regra das ações do `ConectaEnteController`: permissão, validação, verificação do token (#41) e
- * gravação. O controller só traduz `ApiResult` em resposta HTTP.
- */
 class FederativeEntityService
 {
     private $repository;
@@ -22,11 +18,6 @@ class FederativeEntityService
     private $canManage;
     private $newEntity;
 
-    /**
-     * @param callable $canManage   devolve true só para o `saasSuperAdmin`
-     * @param callable $verifyToken recebe o token já aparado e devolve `ConectaEnte\Http\TokenValidation`
-     * @param callable $newEntity   cria a entidade; o construtor do core precisa do App, por isso é injetável
-     */
     public function __construct(FederativeEntityRepository $repository, callable $canManage, callable $verifyToken = null, callable $newEntity = null)
     {
         $this->newEntity = $newEntity ?: function () {
@@ -48,9 +39,6 @@ class FederativeEntityService
         return ApiResult::ok(array_map([$this, 'present'], $this->repository->findAll()));
     }
 
-    /**
-     * Verifica o token sem gravar nada, para a tela sugerir o nome e o CNPJ antes do cadastro.
-     */
     public function verifyToken(array $input)
     {
         if (!$this->allowed()) {
@@ -85,7 +73,7 @@ class FederativeEntityService
             return ApiResult::error(400, $errors);
         }
 
-        $conflict = $this->sealConflict($sealId, null);
+        $conflict = $this->sealConflict($sealId, null) ?: $this->opportunityConflict($sealId, null);
         if ($conflict) {
             return $conflict;
         }
@@ -135,7 +123,8 @@ class FederativeEntityService
 
         $changeSeal = array_key_exists('seal_id', $input) && (int) $input['seal_id'] !== $ente->getSealId();
         if ($changeSeal) {
-            $conflict = $this->sealConflict($input['seal_id'], $ente->getId());
+            $conflict = $this->sealConflict($input['seal_id'], $ente->getId())
+                ?: $this->opportunityConflict($input['seal_id'], $ente->getId());
             if ($conflict) {
                 return $conflict;
             }
@@ -212,9 +201,6 @@ class FederativeEntityService
         return ApiResult::ok($this->present($ente), $status);
     }
 
-    /**
-     * @return ApiResult|null 409 nomeando o ente que já usa o selo
-     */
     private function sealConflict($sealId, $ownId)
     {
         $existing = $this->repository->findBySealId((int) $sealId);
@@ -226,6 +212,27 @@ class FederativeEntityService
         $e = new DuplicateSealException($sealId, $existing->getName());
 
         return ApiResult::error(409, ['seal_id' => $e->getMessage()]);
+    }
+
+    /**
+     * Um selo comum já aplicado a oportunidades vira selo de ente ao ser registrado: se alguma delas já
+     * tem o selo de outro ente, ficaria com dois (#44, que só vigia as aplicações novas).
+     *
+     * @return ApiResult|null 409 nomeando a oportunidade e o outro ente
+     */
+    private function opportunityConflict($sealId, $ownId)
+    {
+        $found = $this->repository->findOpportunityHoldingAnotherEntitySeal((int) $sealId, $ownId);
+
+        if (!$found) {
+            return null;
+        }
+
+        return ApiResult::error(409, ['seal_id' => sprintf(
+            $this->t('Este selo já está aplicado à oportunidade %d, que já tem o selo do ente "%s". Uma oportunidade só pode ter o selo de um ente federado.'),
+            $found['opportunity_id'],
+            $found['entity_name']
+        )]);
     }
 
     private function tokenFailure($validation)

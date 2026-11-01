@@ -302,6 +302,45 @@ class FederativeEntityServiceTest extends TestCase
         $this->assertStringContainsString('Município Y', $result->getBody()['data']['seal_id']);
     }
 
+    public function testCreateIs409WhenTheSealIsOnAnOpportunityThatAlreadyHasAnotherEntity()
+    {
+        $this->repository->method('findOpportunityHoldingAnotherEntitySeal')
+            ->with(10, null)
+            ->willReturn(['opportunity_id' => 8452, 'entity_name' => 'Município Y']);
+        $this->repository->expects($this->never())->method('save');
+
+        $result = $this->service()->create(['name' => 'X', 'seal_id' => 10, 'token' => self::TOKEN]);
+
+        $this->assertSame(409, $result->getStatus());
+        $this->assertStringContainsString('8452', $result->getBody()['data']['seal_id']);
+        $this->assertStringContainsString('Município Y', $result->getBody()['data']['seal_id']);
+        $this->assertSame([], $this->verified);
+    }
+
+    public function testUpdateToASealHeldByAnOpportunityWithAnotherEntityIs409()
+    {
+        $this->repository->method('findById')->willReturn($this->ente(1, 'X', 10));
+        $this->repository->method('findOpportunityHoldingAnotherEntitySeal')
+            ->with(20, 1)
+            ->willReturn(['opportunity_id' => 7, 'entity_name' => 'Município Y']);
+        $this->repository->expects($this->never())->method('save');
+
+        $result = $this->service()->update(1, ['seal_id' => 20]);
+
+        $this->assertSame(409, $result->getStatus());
+        $this->assertStringContainsString('Município Y', $result->getBody()['data']['seal_id']);
+    }
+
+    public function testUpdateKeepingTheSameSealDoesNotLookForOpportunityConflicts()
+    {
+        $this->repository->method('findById')->willReturn($this->ente(1, 'X', 10));
+        $this->repository->expects($this->never())->method('findOpportunityHoldingAnotherEntitySeal');
+
+        $result = $this->service()->update(1, ['seal_id' => 10, 'name' => 'Novo']);
+
+        $this->assertSame(200, $result->getStatus());
+    }
+
     public function testUpdateAndRemoveOfUnknownEntityAre404()
     {
         $this->repository->method('findById')->willReturn(null);

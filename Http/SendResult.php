@@ -2,10 +2,6 @@
 
 namespace ConectaEnte\Http;
 
-/**
- * Desfecho do envio do edital: aceito, recusado sem retentativa (4xx), ou indisponível
- * (5xx/falha de conexão) — este último é o único retentável (retentativa fica para a #49).
- */
 class SendResult
 {
     private $accepted;

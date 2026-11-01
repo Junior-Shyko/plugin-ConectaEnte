@@ -4,10 +4,6 @@ namespace ConectaEnte\Services;
 
 class CnpjFormatter
 {
-    /**
-     * `00.000.000/0000-00` para 14 dígitos; qualquer outro valor volta como veio, para a tela nunca
-     * esconder um dado estranho.
-     */
     public static function format($cnpj)
     {
         $digits = (string) $cnpj;

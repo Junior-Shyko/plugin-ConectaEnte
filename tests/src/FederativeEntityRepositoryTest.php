@@ -52,6 +52,43 @@ class FederativeEntityRepositoryTest extends TestCase
         $this->assertFalse($this->repository->sealExists(99));
     }
 
+    public function testOpportunityConflictQueryScopesToOpportunitiesActiveStatusesAndOtherEntities()
+    {
+        $metadata = $this->createMock(\Doctrine\ORM\Mapping\ClassMetadata::class);
+        $metadata->method('getTableName')->willReturn('conectaente_federative_entity');
+        $connection = $this->createMock(\Doctrine\DBAL\Connection::class);
+        $this->em->method('getClassMetadata')->with(FederativeEntity::class)->willReturn($metadata);
+        $this->em->method('getConnection')->willReturn($connection);
+
+        $connection->expects($this->once())->method('fetchAssoc')
+            ->with(
+                $this->callback(function ($sql) {
+                    return strpos($sql, 'conectaente_federative_entity') !== false
+                        && strpos($sql, 'IN (1,-5)') !== false
+                        && strpos($sql, 'IN (1,-1)') !== false
+                        && strpos($sql, 'fe.id <> :own') !== false;
+                }),
+                ['type' => 'MapasCulturais\\Entities\\Opportunity', 'seal' => 10, 'own' => 0]
+            )
+            ->willReturn(['opportunity_id' => '8452', 'entity_name' => 'Y']);
+
+        $found = $this->repository->findOpportunityHoldingAnotherEntitySeal(10);
+
+        $this->assertSame('Y', $found['entity_name']);
+    }
+
+    public function testOpportunityConflictIsNullWhenNothingConflicts()
+    {
+        $metadata = $this->createMock(\Doctrine\ORM\Mapping\ClassMetadata::class);
+        $metadata->method('getTableName')->willReturn('t');
+        $connection = $this->createMock(\Doctrine\DBAL\Connection::class);
+        $connection->method('fetchAssoc')->willReturn(false);
+        $this->em->method('getClassMetadata')->willReturn($metadata);
+        $this->em->method('getConnection')->willReturn($connection);
+
+        $this->assertNull($this->repository->findOpportunityHoldingAnotherEntitySeal(10, 3));
+    }
+
     public function testSealExists()
     {
         $this->sealRepo->method('find')->with(10)->willReturn(new \stdClass());

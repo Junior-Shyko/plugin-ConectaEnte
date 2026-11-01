@@ -2,9 +2,6 @@
 
 namespace ConectaEnte\Http;
 
-/**
- * Status HTTP e corpo de uma ação do controller, para a regra ficar testável sem o App.
- */
 class ApiResult
 {
     private $status;
@@ -21,9 +18,6 @@ class ApiResult
         return new self($status, $body);
     }
 
-    /**
-     * Mesmo formato do `Controller::errorJson()` do core.
-     */
     public static function error($status, $data)
     {
         return new self($status, ['error' => true, 'data' => $data]);
