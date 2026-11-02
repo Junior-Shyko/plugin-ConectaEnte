@@ -6,6 +6,7 @@ use ConectaEnte\Metadata\CultBrMetadata;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
+use ConectaEnte\Services\PublicationRequirements;
 use ConectaEnte\Services\SealedOpportunity;
 use Doctrine\ORM\Events;
 use MapasCulturais\App;
@@ -23,6 +24,7 @@ class Plugin extends \MapasCulturais\Plugin
 
         $this->hookSingleEntityPerOpportunity($app);
         $this->hookCultBrTab($app);
+        $this->hookPublicationRequirements($app);
 
         $app->log->debug('[ConectaEnte] _init() mode=' . Config::mode());
 
@@ -149,6 +151,23 @@ class Plugin extends \MapasCulturais\Plugin
         CultBrMetadata::register($this);
 
         $app->log->debug('[ConectaEnte] register()');
+    }
+
+    private function hookPublicationRequirements(App $app)
+    {
+        // roda antes do flush: parar aqui não fecha o EntityManager, e a entidade já está com o que o PUT enviou
+        $app->hook('entity(Opportunity).publish:before', function () use ($app) {
+            if ($this->parent !== null || Plugin::sealedEntity($this) === null) {
+                return;
+            }
+
+            $missing = (new PublicationRequirements())->missingFields($this);
+
+            if ($missing) {
+                $app->contentType('application/json');
+                $app->halt(400, json_encode(['error' => true, 'data' => $missing]));
+            }
+        });
     }
 
     private function hookCultBrTab(App $app)
