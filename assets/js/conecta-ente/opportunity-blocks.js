@@ -356,7 +356,7 @@
                 }
 
                 $ui.append(el('div', {'class': 'conectaente-block__row'}, [
-                    el('label', {text: text.totalSlots + ': '}),
+                    el('label', {text: text.totalSlots + ' *: '}),
                     numberInput(ownTotal || '', function (value) {
                         ownTotal = toInt(value);
                         $vacancies.editable('setValue', String(ownTotal));

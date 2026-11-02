@@ -6,6 +6,7 @@ use ConectaEnte\Services\FundingSourceName;
 use ConectaEnte\Vocabulary\CulturalStage;
 use ConectaEnte\Vocabulary\ExecutionType;
 use ConectaEnte\Vocabulary\PriorityTerritory;
+use ConectaEnte\Vocabulary\ProponentType;
 use ConectaEnte\Vocabulary\Segment;
 use ConectaEnte\Vocabulary\TargetingField;
 use ConectaEnte\Vocabulary\TargetingOption;
@@ -29,6 +30,9 @@ class CultBrMetadata
     const QUOTA_RESERVATION = 'conectaente_quotaReservation';
     const REGISTRATION_CHANNELS = 'conectaente_registrationChannels';
     const AFFIRMATIVE_ACTIONS = 'conectaente_affirmativeActions';
+
+    const TOTAL_RESOURCE = 'conectaente_totalResource';
+    const PROPONENT_TYPES = 'conectaente_proponentTypes';
 
     const SEPARATOR = ';';
 
@@ -56,6 +60,8 @@ class CultBrMetadata
             self::QUOTA_RESERVATION => 'Reserva de vagas (cotas)',
             self::REGISTRATION_CHANNELS => 'Formas de inscrição previstas no edital',
             self::AFFIRMATIVE_ACTIONS => 'Outras modalidades de ações afirmativas',
+            self::TOTAL_RESOURCE => 'Valor total do edital (R$)',
+            self::PROPONENT_TYPES => 'Tipos de proponente',
         ];
     }
 
@@ -85,6 +91,13 @@ class CultBrMetadata
                 $definitions[$other] = ['label' => self::t($labels[$other]), 'type' => 'string'];
             }
         }
+
+        $definitions[self::TOTAL_RESOURCE] = ['label' => self::t($labels[self::TOTAL_RESOURCE]), 'type' => 'string'];
+        $definitions[self::PROPONENT_TYPES] = [
+            'label' => self::t($labels[self::PROPONENT_TYPES]),
+            'type' => 'multiselect',
+            'options' => ProponentType::options(),
+        ];
 
         foreach (self::jsonBlocks() as $key => $sanitize) {
             $definitions[$key] = [

@@ -12,6 +12,8 @@ $choices = [
     Meta::CULTURAL_STAGES => Meta::CULTURAL_STAGES_OTHER,
     Meta::THEMATIC_AGENDAS => Meta::THEMATIC_AGENDAS_OTHER,
     Meta::PRIORITY_TERRITORIES => null,
+    Meta::PROPONENT_TYPES => null,
+    Meta::TOTAL_RESOURCE => null,
 ];
 ?>
 <div id="conecta-ente-cultbr" class="aba-content">
@@ -22,7 +24,7 @@ $choices = [
     <?php foreach ($choices as $key => $specifyKey): ?>
         <?php $label = $definitions[$key]['label']; ?>
         <p>
-            <span class="label"><?= $label ?>:</span>
+            <span class="label"><?= $label ?> *:</span>
             <?php if ($definitions[$key]['type'] === 'multiselect'): ?>
                 <editable-multiselect
                     entity-property="<?= $key ?>"
@@ -33,7 +35,7 @@ $choices = [
                 <span class="js-editable"
                       data-edit="<?= $key ?>"
                       data-original-title="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
-                      data-emptytext="<?php i::esc_attr_e('Selecione'); ?>"><?= htmlspecialchars((string) $entity->$key) ?></span>
+                      data-emptytext="<?= $definitions[$key]['type'] === 'select' ? i::esc_attr__('Selecione') : i::esc_attr__('Informe') ?>"><?= htmlspecialchars((string) $entity->$key) ?></span>
             <?php endif; ?>
         </p>
         <?php if ($specifyKey !== null): ?>
@@ -58,7 +60,7 @@ $choices = [
     <div id="conectaente-blocks" data-config="<?= htmlspecialchars(json_encode(BlockUiConfig::toArray()), ENT_QUOTES) ?>">
         <?php foreach ($blocks as $name => $key): ?>
             <fieldset class="conectaente-block" data-block="<?= $name ?>">
-                <legend><?= htmlspecialchars($definitions[$key]['label']) ?></legend>
+                <legend><?= htmlspecialchars($definitions[$key]['label']) ?> *</legend>
             </fieldset>
         <?php endforeach; ?>
     </div>

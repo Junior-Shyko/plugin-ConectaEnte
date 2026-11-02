@@ -181,3 +181,24 @@ tests/run.sh --filter testEditalType
 ```
 
 Tests live in `tests/src` (namespace `Tests\ConectaEnte`); `tests/bootstrap.php` loads the autoload.
+
+## Publication requirements (#46)
+
+A sealed root opportunity (a federative entity seal, no `parent`) cannot be published while the data CultBR
+requires is missing. Drafts, opportunities without an entity seal and phases are not checked, and
+`saasSuperAdmin` is not exempt.
+
+- `Services/PublicationRequirements::missingFields($opportunity)` returns `field key => [messages]` (empty when
+  it can be published). Every message names the field in PT-BR. It checks `numberVacancies`, the `rules` file,
+  the description, both registration dates, the plugin metadata (including the two added here:
+  `conectaente_totalResource` and `conectaente_proponentTypes`, which Mapas v5 does not have) and the four JSON
+  blocks (funding answered, quota sums, registration channels with valid e-mail, affirmative actions with the
+  140 characters limit). Minimum quota percentages are out of scope.
+- The check runs on `entity(Opportunity).publish:before`. Unlike `save:before` (Doctrine `preUpdate`, inside
+  `flush()`), stopping there does not close the EntityManager, and the entity already holds what the `PUT`
+  sent. `PUT`/`PATCH` with `status` and the publish route all end in `Entity::publish()`.
+- The answer is `HTTP 400` with `{"error": true, "data": {key: [messages]}}`, the shape the Mapas front maps to
+  the fields (keys that match a `data-edit` are marked, the others are shown as messages). The opportunity stays
+  in draft.
+- The tab marks the required fields with `*`.
+
