@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 class CultBrMetadataTest extends TestCase
 {
-    public function testRegistersTheTwelveKeysWithThePluginPrefixOfTheDevelopBranch()
+    public function testRegistersEveryKeyWithThePluginPrefix()
     {
         $this->assertSame([
             'conectaente_executionType',
@@ -24,6 +24,8 @@ class CultBrMetadataTest extends TestCase
             'conectaente_thematicAgendas',
             'conectaente_thematicAgendasOther',
             'conectaente_priorityTerritories',
+            'conectaente_totalResource',
+            'conectaente_proponentTypes',
             'conectaente_fundingSources',
             'conectaente_quotaReservation',
             'conectaente_registrationChannels',
