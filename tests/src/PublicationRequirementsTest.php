@@ -128,6 +128,15 @@ class PublicationRequirementsTest extends TestCase
         $this->assertArrayHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => 'abc']));
     }
 
+    public function testBrazilianAndPlainAmountFormatsAreAccepted()
+    {
+        foreach (['1.500.000,00', '1500000,50', '1,5', '1500000.50', '1.500.000', '1500000'] as $amount) {
+            $this->assertArrayNotHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => $amount]), $amount);
+        }
+        $this->assertArrayHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => '0,00']));
+        $this->assertArrayHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => '0.000,00']));
+    }
+
     public function testUnknownChoiceIsNamedAndDoesNotCountAsAnswer()
     {
         $missing = $this->missing([Meta::PROPONENT_TYPES => 'inexistente']);

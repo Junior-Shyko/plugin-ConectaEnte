@@ -405,7 +405,13 @@ class PublicationRequirements
     private function isPositiveNumber($value)
     {
         if (is_string($value)) {
-            $value = str_replace(',', '.', trim($value));
+            $value = trim($value);
+
+            if (strpos($value, ',') !== false) {
+                $value = str_replace(',', '.', str_replace('.', '', $value));
+            } elseif (substr_count($value, '.') > 1) {
+                $value = str_replace('.', '', $value);
+            }
         }
 
         return is_numeric($value) && (float) $value > 0;
