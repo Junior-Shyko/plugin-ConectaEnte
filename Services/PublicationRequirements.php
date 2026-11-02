@@ -7,6 +7,8 @@ use ConectaEnte\Vocabulary\AffirmativeAction;
 use ConectaEnte\Vocabulary\AffirmativeActionGroup;
 use ConectaEnte\Vocabulary\FundingSource;
 use ConectaEnte\Vocabulary\RegistrationChannel;
+use ConectaEnte\Vocabulary\TargetingField;
+use ConectaEnte\Vocabulary\TargetingOption;
 use MapasCulturais\i;
 use Respect\Validation\Validator;
 
@@ -113,9 +115,21 @@ class PublicationRequirements
 
         foreach ([Meta::SEGMENTS, Meta::CULTURAL_STAGES, Meta::THEMATIC_AGENDAS, Meta::PRIORITY_TERRITORIES] as $key) {
             $errors += $this->choiceErrors($opportunity, $key);
+            $errors += $this->notTargetedConflict($opportunity, $key);
         }
 
         return $errors;
+    }
+
+    private function notTargetedConflict($opportunity, $key)
+    {
+        $values = Meta::values($opportunity->$key);
+
+        if (!in_array(TargetingOption::NOT_TARGETED, $values, true) || count($values) < 2) {
+            return [];
+        }
+
+        return [$key => [sprintf(i::__('A opção "%s" de "%s" não pode ser combinada com outras opções.'), TargetingOption::text(TargetingOption::NOT_TARGETED, TargetingField::fromMetadataKey($key)), Meta::definitions()[$key]['label'])]];
     }
 
     private function specificationErrors($opportunity)
@@ -163,12 +177,10 @@ class PublicationRequirements
             return [$key => [i::__('Em "Houve utilização de recursos de outras fontes?", selecione pelo menos uma fonte de recurso.')]];
         }
 
-        $named = array_filter($others, function ($source) {
-            return trim((string) (isset($source['nomeFonte']) ? $source['nomeFonte'] : '')) !== '';
-        });
-
-        if ($others && !$named) {
-            return [$key => [i::__('Em "Houve utilização de recursos de outras fontes?", preencha o nome de pelo menos uma fonte.')]];
+        foreach ($others as $source) {
+            if (trim((string) (isset($source['nomeFonte']) ? $source['nomeFonte'] : '')) === '') {
+                return [$key => [i::__('Em "Houve utilização de recursos de outras fontes?", preencha o nome de todas as fontes.')]];
+            }
         }
 
         return [];
@@ -224,7 +236,17 @@ class PublicationRequirements
         $sum = 0;
 
         foreach ($quotas as $quota) {
-            $sum += (int) $this->numberOrNull(isset($quota['vagas']) ? $quota['vagas'] : null);
+            $slots = $this->numberOrNull(isset($quota['vagas']) ? $quota['vagas'] : null);
+
+            if ($slots !== null && $slots < 0) {
+                return $incomplete;
+            }
+
+            if ($slots !== null && $slots != floor($slots)) {
+                return i::__('Em "Reserva de vagas (cotas)", o número de vagas de cada cota deve ser inteiro.');
+            }
+
+            $sum += (int) $slots;
         }
 
         if ($vacancies >= 1 && $sum !== $vacancies) {
@@ -248,7 +270,7 @@ class PublicationRequirements
             return [$key => [i::__('O campo "Formas de inscrição previstas no edital" é obrigatório.')]];
         }
 
-        $channels = $this->listOf($block, 'formas');
+        $channels = isset($block['formas']) && is_array($block['formas']) ? $block['formas'] : [];
 
         if (!$channels) {
             return [$key => [i::__('Em "Formas de inscrição previstas no edital", selecione pelo menos uma forma.')]];
@@ -257,6 +279,11 @@ class PublicationRequirements
         $messages = [];
 
         foreach ($channels as $channel) {
+            if (!is_array($channel)) {
+                $messages[] = i::__('Em "Formas de inscrição previstas no edital", cada forma marcada deve ter tipo e descrição.');
+                continue;
+            }
+
             $type = (string) (isset($channel['tipo']) ? $channel['tipo'] : '');
             $description = trim((string) (isset($channel['descricao']) ? $channel['descricao'] : ''));
 
@@ -290,6 +317,10 @@ class PublicationRequirements
 
         if (!$known) {
             $messages[] = i::__($title . 'selecione pelo menos uma opção.');
+        }
+
+        if (count(array_unique($options)) > 1 && array_filter($options, [AffirmativeAction::class, 'isExclusive'])) {
+            $messages[] = i::__($title . 'a opção "Não são previstas outras ações afirmativas" não pode ser combinada com outras opções.');
         }
 
         foreach ($options as $option) {

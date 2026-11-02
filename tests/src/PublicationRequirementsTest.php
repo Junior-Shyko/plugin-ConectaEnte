@@ -153,6 +153,52 @@ class PublicationRequirementsTest extends TestCase
         $this->assertSame([], $this->missing([Meta::SEGMENTS => 'Outros', Meta::SEGMENTS_OTHER => 'Circo']));
     }
 
+    public function testNotTargetedCannotBeCombinedWithASpecificChoice()
+    {
+        $missing = $this->missing([Meta::SEGMENTS => '__edital_nao_se_direciona__;Música']);
+
+        $this->assertSame([Meta::SEGMENTS], array_keys($missing));
+        $this->assertStringContainsString('não pode ser combinada', implode(' ', $missing[Meta::SEGMENTS]));
+        $this->assertSame([], $this->missing([Meta::SEGMENTS => 'Música;Teatro']));
+    }
+
+    public function testEveryOtherFundingSourceNeedsAName()
+    {
+        $sources = [['nomeFonte' => 'Fundo X', 'valor' => 1], ['nomeFonte' => ' ', 'valor' => 2]];
+        $missing = $this->missing([Meta::FUNDING_SOURCES => ['houveUtilizacao' => 'sim', 'outrasFontes' => $sources]]);
+
+        $this->assertStringContainsString('todas as fontes', implode(' ', $missing[Meta::FUNDING_SOURCES]));
+    }
+
+    public function testQuotaSlotsMustBeNonNegativeWholeNumbersInEveryRow()
+    {
+        $rows = $this->complete()[Meta::QUOTA_RESERVATION];
+        $rows[] = ['label' => 'Extra', 'vagas' => -2, 'valorDestinado' => 0, 'naoAplicavel' => false];
+        $rows[3]['vagas'] = 7;
+        $this->assertArrayHasKey(Meta::QUOTA_RESERVATION, $this->missing([Meta::QUOTA_RESERVATION => $rows]));
+
+        $rows = $this->complete()[Meta::QUOTA_RESERVATION];
+        $rows[0]['vagas'] = 3.5;
+        $rows[3]['vagas'] = 4.5;
+        $missing = $this->missing([Meta::QUOTA_RESERVATION => $rows]);
+        $this->assertStringContainsString('deve ser inteiro', implode(' ', $missing[Meta::QUOTA_RESERVATION]));
+    }
+
+    public function testChannelEntriesThatAreNotObjectsAreReported()
+    {
+        $channels = ['previstasNoEdital' => 'sim', 'formas' => ['texto solto', ['tipo' => 'presencial', 'descricao' => 'Balcão']]];
+
+        $this->assertArrayHasKey(Meta::REGISTRATION_CHANNELS, $this->missing([Meta::REGISTRATION_CHANNELS => $channels]));
+    }
+
+    public function testNotPlannedAffirmativeActionIsExclusive()
+    {
+        $block = ['opcoes' => ['nao_previstas', 'bonus_agentes'], 'bonus_agentes' => ['pessoas_negras']];
+        $missing = $this->missing([Meta::AFFIRMATIVE_ACTIONS => $block]);
+
+        $this->assertStringContainsString('não pode ser combinada', implode(' ', $missing[Meta::AFFIRMATIVE_ACTIONS]));
+    }
+
     public function testFundingBlock()
     {
         $this->assertArrayHasKey(Meta::FUNDING_SOURCES, $this->missing([Meta::FUNDING_SOURCES => ['houveUtilizacao' => 'sim', 'outrasFontes' => null]]));
