@@ -206,7 +206,7 @@ class OpportunityPayload
             return null;
         }
 
-        return DateTime::createFromFormat('Y-m-d H:i:s', $stamped) ?: null;
+        return DateTime::createFromFormat(DateTime::ATOM, $stamped) ?: null;
     }
 
     private function parId($value)

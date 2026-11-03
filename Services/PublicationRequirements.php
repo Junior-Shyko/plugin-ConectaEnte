@@ -245,6 +245,13 @@ class PublicationRequirements
                 return $incomplete;
             }
 
+            // valor de toda cota aplicável, inclusive as extras e a ampla: o payload grava nulo como 0.00
+            $amount = $this->numberOrNull(isset($quota['valorDestinado']) ? $quota['valorDestinado'] : null);
+
+            if (empty($quota['naoAplicavel']) && ($amount === null || $amount < 0)) {
+                return $incomplete;
+            }
+
             if ($slots !== null && $slots != floor($slots)) {
                 return i::__('Em "Reserva de vagas (cotas)", o número de vagas de cada cota deve ser inteiro.');
             }

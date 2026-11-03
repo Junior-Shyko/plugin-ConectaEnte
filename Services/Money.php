@@ -18,7 +18,7 @@ final class Money
     public static function toDecimal($value)
     {
         if (is_int($value) || is_float($value)) {
-            return is_finite((float) $value) ? number_format((float) $value, 2, '.', '') : null;
+            return is_finite((float) $value) && (float) $value >= 0 ? number_format((float) $value, 2, '.', '') : null;
         }
 
         if (!is_string($value)) {
@@ -28,6 +28,11 @@ final class Money
         $text = trim($value);
 
         if (strpos($text, ',') !== false) {
+            // antes de tirar os pontos: "12.34,56" e "1,000.50" não são agrupamento válido e viram nulo
+            if (!preg_match('/^\d{1,3}(\.\d{3})*,\d+$|^\d+,\d+$/', $text)) {
+                return null;
+            }
+
             $text = str_replace(',', '.', str_replace('.', '', $text));
         } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $text)) {
             $text = str_replace('.', '', $text);

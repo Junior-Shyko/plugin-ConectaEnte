@@ -15,7 +15,8 @@ use MapasCulturais\Entities\Opportunity;
  */
 final class PublicationStamp
 {
-    const FORMAT = 'Y-m-d H:i:s';
+    // com o offset do fuso: se o fuso padrão do PHP mudar, a data gravada continua apontando o mesmo instante
+    const FORMAT = DATE_ATOM;
 
     /**
      * Chamado em `entity(Opportunity).save:before`, antes de o core gravar a entidade.

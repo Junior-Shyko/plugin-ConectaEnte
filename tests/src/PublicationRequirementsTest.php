@@ -128,6 +128,23 @@ class PublicationRequirementsTest extends TestCase
         $this->assertArrayHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => 'abc']));
     }
 
+    public function testEveryApplicableQuotaNeedsANonNegativeAmountNotOnlyTheLegalOnes()
+    {
+        // a ampla e as extras também saem no payload; valor nulo viraria 0.00 sem aviso
+        $rows = $this->complete()[Meta::QUOTA_RESERVATION];
+        $rows[3]['valorDestinado'] = null;
+        $this->assertArrayHasKey(Meta::QUOTA_RESERVATION, $this->missing([Meta::QUOTA_RESERVATION => $rows]));
+
+        $rows = $this->complete()[Meta::QUOTA_RESERVATION];
+        $rows[3]['valorDestinado'] = -10;
+        $this->assertArrayHasKey(Meta::QUOTA_RESERVATION, $this->missing([Meta::QUOTA_RESERVATION => $rows]));
+
+        // cota extra marcada como não aplicável não exige valor
+        $rows = $this->complete()[Meta::QUOTA_RESERVATION];
+        $rows[] = ['label' => 'Extra', 'vagas' => 0, 'valorDestinado' => null, 'naoAplicavel' => true];
+        $this->assertArrayNotHasKey(Meta::QUOTA_RESERVATION, $this->missing([Meta::QUOTA_RESERVATION => $rows]));
+    }
+
     public function testVacanciesMustBeAWholeNumberSoThePayloadSendsTheSameValue()
     {
         // o payload envia (int): "1.500" iria como 1 e "0.5" como 0, então a validação recusa os dois
