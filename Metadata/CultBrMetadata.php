@@ -34,6 +34,9 @@ class CultBrMetadata
     const TOTAL_RESOURCE = 'conectaente_totalResource';
     const PROPONENT_TYPES = 'conectaente_proponentTypes';
 
+    // data em que a oportunidade foi publicada pela primeira vez; não é campo de formulário (ver Plugin::register)
+    const PUBLISHED_AT = 'conectaente_publishedAt';
+
     const SEPARATOR = ';';
 
     private static function specifications()

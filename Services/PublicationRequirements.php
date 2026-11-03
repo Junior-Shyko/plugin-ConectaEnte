@@ -435,16 +435,8 @@ class PublicationRequirements
 
     private function isPositiveNumber($value)
     {
-        if (is_string($value)) {
-            $value = trim($value);
+        $decimal = Money::toDecimal($value);
 
-            if (strpos($value, ',') !== false) {
-                $value = str_replace(',', '.', str_replace('.', '', $value));
-            } elseif (substr_count($value, '.') > 1) {
-                $value = str_replace('.', '', $value);
-            }
-        }
-
-        return is_numeric($value) && (float) $value > 0;
+        return $decimal !== null && (float) $decimal > 0;
     }
 }
