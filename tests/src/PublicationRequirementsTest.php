@@ -128,6 +128,16 @@ class PublicationRequirementsTest extends TestCase
         $this->assertArrayHasKey(Meta::TOTAL_RESOURCE, $this->missing([Meta::TOTAL_RESOURCE => 'abc']));
     }
 
+    public function testVacanciesMustBeAWholeNumberSoThePayloadSendsTheSameValue()
+    {
+        // o payload envia (int): "1.500" iria como 1 e "0.5" como 0, então a validação recusa os dois
+        $this->assertArrayHasKey('numberVacancies', $this->missing(['numberVacancies' => '1.500']));
+        $this->assertArrayHasKey('numberVacancies', $this->missing(['numberVacancies' => '0.5']));
+        $this->assertArrayHasKey('numberVacancies', $this->missing(['numberVacancies' => '1500,00']));
+        $this->assertArrayNotHasKey('numberVacancies', $this->missing(['numberVacancies' => '1500']));
+        $this->assertArrayNotHasKey('numberVacancies', $this->missing(['numberVacancies' => 1]));
+    }
+
     public function testBrazilianAndPlainAmountFormatsAreAccepted()
     {
         foreach (['1.500.000,00', '1500000,50', '1,5', '1500000.50', '1.500.000', '1500000'] as $amount) {

@@ -48,11 +48,14 @@ class PublicationRequirements
 
     private function vacanciesErrors($opportunity)
     {
-        if ($this->isPositiveNumber($opportunity->{self::NUMBER_VACANCIES})) {
+        // inteiro, sem o parser monetário: "1.500" e "0.5" seriam aceitos, e o payload os enviaria truncados
+        $vacancies = filter_var($opportunity->{self::NUMBER_VACANCIES}, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        if ($vacancies !== false) {
             return [];
         }
 
-        return [self::NUMBER_VACANCIES => [i::__('O campo "Total de vagas" é obrigatório e deve ser maior que zero.')]];
+        return [self::NUMBER_VACANCIES => [i::__('O campo "Total de vagas" é obrigatório e deve ser um número inteiro maior que zero.')]];
     }
 
     private function totalResourceErrors($opportunity)
