@@ -39,6 +39,39 @@ class MoneyTest extends TestCase
         $this->assertSame('1500000.50', Money::toDecimal('1.500.000,50'));
     }
 
+    public function testLargeAmountsKeepEveryDigit()
+    {
+        // antes passava por float e virava 9007199254740992.00
+        $this->assertSame('9007199254740993.00', Money::toDecimal('9007199254740993'));
+        $this->assertSame('9007199254740993.50', Money::toDecimal('9007199254740993,5'));
+        $this->assertSame('9223372036854775807.00', Money::toDecimal(PHP_INT_MAX));
+    }
+
+    public function testMoreThanTwoDecimalsAreRoundedHalfUp()
+    {
+        // com vírgula, três casas são decimais; com ponto, três casas são milhar, então o caso usa quatro
+        $this->assertSame('1.01', Money::toDecimal('1,005'));
+        $this->assertSame('1.00', Money::toDecimal('1,004'));
+        $this->assertSame('1.01', Money::toDecimal('1.0050'));
+        $this->assertSame('1.00', Money::toDecimal('1.0049'));
+        // a regra só olha a terceira casa: 0,00499… arredonda para baixo
+        $this->assertSame('1.00', Money::toDecimal('1,0049999'));
+    }
+
+    public function testRoundingCarriesIntoTheIntegerPart()
+    {
+        $this->assertSame('1000.00', Money::toDecimal('999,999'));
+        $this->assertSame('10.00', Money::toDecimal('9,999'));
+        $this->assertSame('0.01', Money::toDecimal('0,005'));
+        $this->assertSame('0.00', Money::toDecimal('0,004'));
+    }
+
+    public function testAZeroBeforeTheDotIsNeverAThousandsSeparator()
+    {
+        $this->assertSame('0.50', Money::toDecimal('0.500'));
+        $this->assertSame('0.01', Money::toDecimal('0.005'));
+    }
+
     public function testNegativeIntegersAndFloatsAreRefusedLikeNegativeStrings()
     {
         $this->assertNull(Money::toDecimal(-5));
