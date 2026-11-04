@@ -48,11 +48,14 @@ class PublicationRequirements
 
     private function vacanciesErrors($opportunity)
     {
-        if ($this->isPositiveNumber($opportunity->{self::NUMBER_VACANCIES})) {
+        // inteiro, sem o parser monetário: "1.500" e "0.5" seriam aceitos, e o payload os enviaria truncados
+        $vacancies = filter_var($opportunity->{self::NUMBER_VACANCIES}, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        if ($vacancies !== false) {
             return [];
         }
 
-        return [self::NUMBER_VACANCIES => [i::__('O campo "Total de vagas" é obrigatório e deve ser maior que zero.')]];
+        return [self::NUMBER_VACANCIES => [i::__('O campo "Total de vagas" é obrigatório e deve ser um número inteiro maior que zero.')]];
     }
 
     private function totalResourceErrors($opportunity)
@@ -239,6 +242,13 @@ class PublicationRequirements
             $slots = $this->numberOrNull(isset($quota['vagas']) ? $quota['vagas'] : null);
 
             if ($slots !== null && $slots < 0) {
+                return $incomplete;
+            }
+
+            // valor de toda cota aplicável, inclusive as extras e a ampla: o payload grava nulo como 0.00
+            $amount = $this->numberOrNull(isset($quota['valorDestinado']) ? $quota['valorDestinado'] : null);
+
+            if (empty($quota['naoAplicavel']) && ($amount === null || $amount < 0)) {
                 return $incomplete;
             }
 
@@ -435,16 +445,8 @@ class PublicationRequirements
 
     private function isPositiveNumber($value)
     {
-        if (is_string($value)) {
-            $value = trim($value);
+        $decimal = Money::toDecimal($value);
 
-            if (strpos($value, ',') !== false) {
-                $value = str_replace(',', '.', str_replace('.', '', $value));
-            } elseif (substr_count($value, '.') > 1) {
-                $value = str_replace('.', '', $value);
-            }
-        }
-
-        return is_numeric($value) && (float) $value > 0;
+        return $decimal !== null && (float) $decimal > 0;
     }
 }

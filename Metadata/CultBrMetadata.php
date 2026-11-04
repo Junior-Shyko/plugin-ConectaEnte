@@ -34,6 +34,9 @@ class CultBrMetadata
     const TOTAL_RESOURCE = 'conectaente_totalResource';
     const PROPONENT_TYPES = 'conectaente_proponentTypes';
 
+    // data de publicação do edital (aaaa-mm-dd): vem preenchida com a data do primeiro salvamento ativo, e o gestor pode alterá-la
+    const PUBLICATION_DATE = 'conectaente_publicationDate';
+
     const SEPARATOR = ';';
 
     private static function specifications()
