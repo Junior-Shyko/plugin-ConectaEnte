@@ -322,6 +322,6 @@ class OpportunityPayloadTest extends TestCase
 
     public function testTheMetadataKeyOfThePublicationDateIsOnThePrefix()
     {
-        $this->assertStringStartsWith(Meta::PREFIX, Meta::PUBLISHED_AT);
+        $this->assertStringStartsWith(Meta::PREFIX, Meta::PUBLICATION_DATE);
     }
 }

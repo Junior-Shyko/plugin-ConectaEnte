@@ -6,6 +6,7 @@ use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Metadata\CultBrMetadata as Meta;
 use ConectaEnte\Services\Money;
 use ConectaEnte\Services\PublicationRequirements;
+use ConectaEnte\Services\PublicationStamp;
 use ConectaEnte\Vocabulary\AffirmativeAction;
 use ConectaEnte\Vocabulary\CulturalStage;
 use ConectaEnte\Vocabulary\ExecutionType;
@@ -194,19 +195,10 @@ class OpportunityPayload
         ];
     }
 
+    // o campo é aaaa-mm-dd; data inválida digitada à mão sai nula e o payload a nomeia como faltante
     private function publishedAt(Opportunity $opportunity)
     {
-        $stamped = $opportunity->getMetadata(Meta::PUBLISHED_AT);
-
-        if ($stamped instanceof DateTimeInterface) {
-            return $stamped;
-        }
-
-        if (!is_string($stamped) || $stamped === '') {
-            return null;
-        }
-
-        return DateTime::createFromFormat(DateTime::ATOM, $stamped) ?: null;
+        return PublicationStamp::parse($opportunity->getMetadata(Meta::PUBLICATION_DATE));
     }
 
     private function parId($value)

@@ -151,9 +151,9 @@ class Plugin extends \MapasCulturais\Plugin
         $app->registerController('conecta-ente', Controllers\ConectaEnteController::class);
 
         CultBrMetadata::register($this);
-        $this->registerOpportunityMetadata(CultBrMetadata::PUBLISHED_AT, [
-            'label' => i::__('Data de publicação (CultBR)'),
-            'type' => 'string',
+        $this->registerOpportunityMetadata(CultBrMetadata::PUBLICATION_DATE, [
+            'label' => i::__('Data de publicação do edital'),
+            'type' => 'date',
         ]);
 
         $app->log->debug('[ConectaEnte] register()');
