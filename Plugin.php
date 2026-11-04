@@ -7,6 +7,7 @@ use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
 use ConectaEnte\Services\PublicationRequirements;
+use ConectaEnte\Services\PublicationStamp;
 use ConectaEnte\Services\SealedOpportunity;
 use Doctrine\ORM\Events;
 use MapasCulturais\App;
@@ -25,6 +26,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->hookSingleEntityPerOpportunity($app);
         $this->hookCultBrTab($app);
         $this->hookPublicationRequirements($app);
+        $this->hookPublicationStamp($app);
 
         $app->log->debug('[ConectaEnte] _init() mode=' . Config::mode());
 
@@ -149,8 +151,19 @@ class Plugin extends \MapasCulturais\Plugin
         $app->registerController('conecta-ente', Controllers\ConectaEnteController::class);
 
         CultBrMetadata::register($this);
+        $this->registerOpportunityMetadata(CultBrMetadata::PUBLICATION_DATE, [
+            'label' => i::__('Data de publicação do edital'),
+            'type' => 'date',
+        ]);
 
         $app->log->debug('[ConectaEnte] register()');
+    }
+
+    private function hookPublicationStamp(App $app)
+    {
+        $app->hook('entity(Opportunity).save:before', function () {
+            (new PublicationStamp())->stamp($this);
+        });
     }
 
     private function hookPublicationRequirements(App $app)

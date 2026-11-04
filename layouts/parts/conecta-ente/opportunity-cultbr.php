@@ -49,6 +49,15 @@ $choices = [
         <?php endif; ?>
     <?php endforeach; ?>
 
+    <p>
+        <span class="label"><?= i::__('Data de publicação do edital') ?> *:</span>
+        <span class="js-editable"
+              data-edit="<?= Meta::PUBLICATION_DATE ?>"
+              data-type="date"
+              data-original-title="<?= htmlspecialchars(i::__('Data de publicação do edital'), ENT_QUOTES) ?>"
+              data-emptytext="<?php i::esc_attr_e('Informe a data'); ?>"><?= htmlspecialchars((string) $entity->getMetadata(Meta::PUBLICATION_DATE)) ?></span>
+    </p>
+
     <?php
     $blocks = [
         'funding' => Meta::FUNDING_SOURCES,
