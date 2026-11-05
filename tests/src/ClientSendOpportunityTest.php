@@ -20,6 +20,46 @@ class ClientSendOpportunityTest extends TestCase
         $this->assertSame(42, $result->getResponse()['id_oportunidades_mapa']);
     }
 
+    public function testAcceptedSendKeepsTheRequestIdHeader()
+    {
+        $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 42], ['x-request-id' => 'req-123']);
+
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+
+        $this->assertSame('req-123', $result->getRequestId());
+    }
+
+    public function testStatus200WithoutJsonIsUnreachableAndRetryable()
+    {
+        $transport = FakeTransport::replying(200, '<html>proxy</html>', []);
+
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+
+        $this->assertFalse($result->isAccepted());
+        $this->assertTrue($result->isUnreachable());
+        $this->assertSame(\ConectaEnte\Vocabulary\SendOutcome::PENDING, \ConectaEnte\Services\RetryPolicy::outcome($result, 1, 3));
+    }
+
+    public function testRejectionKeepsTheHttpStatusForTheRetryPolicy()
+    {
+        $transport = FakeTransport::replying(422, ['detail' => 'numero_previsto_vagas: campo obrigatório']);
+
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+
+        $this->assertFalse($result->isAccepted());
+        $this->assertSame(422, $result->getStatus());
+    }
+
+    public function testServerErrorIsUnreachableWithItsStatus()
+    {
+        $transport = FakeTransport::replying(500, 'erro interno', []);
+
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+
+        $this->assertTrue($result->isUnreachable());
+        $this->assertSame(500, $result->getStatus());
+    }
+
     public function testSendsTheBodyAsJsonWithTheTokenHeader()
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 1]);
