@@ -196,19 +196,24 @@ class Plugin extends \MapasCulturais\Plugin
             $root = $root->parent;
         }
 
-        $eligibility = (new SendEligibility(new FederativeEntityRepository()))->check($root);
+        // roda depois do flush: uma exceção aqui não pode virar 500 para uma oportunidade já salva
+        try {
+            $eligibility = (new SendEligibility(new FederativeEntityRepository()))->check($root);
 
-        if (!$eligibility->isEligible()) {
-            return;
+            if (!$eligibility->isEligible()) {
+                return;
+            }
+
+            App::i()->enqueueOrReplaceJob(
+                SendOpportunityJob::SLUG,
+                ['opportunityId' => $root->id, 'entityId' => $eligibility->getEntity()->getId()],
+                'now',
+                Config::retryDelay(),
+                Config::maxAttempts()
+            );
+        } catch (\Throwable $e) {
+            App::i()->log->error("[ConectaEnte] could not schedule the send of opportunity {$root->id}: {$e->getMessage()}");
         }
-
-        App::i()->enqueueOrReplaceJob(
-            SendOpportunityJob::SLUG,
-            ['opportunityId' => $root->id, 'entityId' => $eligibility->getEntity()->getId()],
-            'now',
-            Config::retryDelay(),
-            Config::maxAttempts()
-        );
     }
 
     private function hookPublicationRequirements(App $app)
