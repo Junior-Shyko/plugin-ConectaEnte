@@ -96,13 +96,18 @@ class Client
             return SendResult::unreachable($response->getStatus(), $response->getTransportError());
         }
 
+        $requestId = isset($response->getHeaders()['x-request-id']) ? $response->getHeaders()['x-request-id'] : null;
+
         if ($response->getStatus() === 200) {
             $decoded = $response->decoded();
 
-            return SendResult::ok($decoded === null ? [] : $decoded);
+            // 200 sem JSON é página de proxy/balanceador, não aceite do CultBR: retenta como indisponível
+            return $decoded === null
+                ? SendResult::unreachable(200, 'resposta 200 sem JSON')
+                : SendResult::ok($decoded, $requestId);
         }
 
-        return SendResult::rejected($this->readDetail($response->json(), $response->getStatus(), $this->translate('A Plataforma CultBR recusou o envio do edital (HTTP %d).')));
+        return SendResult::rejected($this->readDetail($response->json(), $response->getStatus(), $this->translate('A Plataforma CultBR recusou o envio do edital (HTTP %d).')), $response->getStatus());
     }
 
     public function sendOpportunityUrl($idMapa)
