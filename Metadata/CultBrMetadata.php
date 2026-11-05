@@ -37,10 +37,6 @@ class CultBrMetadata
     // data de publicação do edital (aaaa-mm-dd): vem preenchida com a data do primeiro salvamento ativo, e o gestor pode alterá-la
     const PUBLICATION_DATE = 'conectaente_publicationDate';
 
-    // correlação com o CultBR, gravada pelo envio aceito; não é campo do formulário
-    const PAR_EDITAL_ID = 'conectaente_parEditalId';
-    const REQUEST_ID = 'conectaente_requestId';
-
     const SEPARATOR = ';';
 
     private static function specifications()

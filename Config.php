@@ -26,17 +26,6 @@ class Config
         return rtrim((string) self::get('host', ''), '/');
     }
 
-    // inclui a primeira tentativa: 3 significa uma tentativa e até duas retentativas
-    public static function maxAttempts()
-    {
-        return max(1, (int) self::get('max_attempts', 3));
-    }
-
-    public static function retryDelay()
-    {
-        return (string) self::get('retry_delay', '+15 seconds');
-    }
-
     public static function get($key, $default = null)
     {
         $app = App::i();

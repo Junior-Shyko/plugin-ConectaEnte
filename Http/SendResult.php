@@ -10,9 +10,8 @@ class SendResult
     private $message;
     private $status;
     private $transportError;
-    private $requestId;
 
-    private function __construct($accepted, $unreachable, array $response = null, $message = null, $status = 0, $transportError = null, $requestId = null)
+    private function __construct($accepted, $unreachable, array $response = null, $message = null, $status = 0, $transportError = null)
     {
         $this->accepted = $accepted;
         $this->unreachable = $unreachable;
@@ -20,17 +19,16 @@ class SendResult
         $this->message = $message;
         $this->status = $status;
         $this->transportError = $transportError;
-        $this->requestId = $requestId;
     }
 
-    public static function ok(array $response, $requestId = null)
+    public static function ok(array $response)
     {
-        return new self(true, false, $response, null, 200, null, $requestId);
+        return new self(true, false, $response);
     }
 
-    public static function rejected($message, $status = 0)
+    public static function rejected($message)
     {
-        return new self(false, false, null, $message, $status);
+        return new self(false, false, null, $message);
     }
 
     public static function unreachable($status = 0, $transportError = null)
@@ -66,11 +64,5 @@ class SendResult
     public function getTransportError()
     {
         return $this->transportError;
-    }
-
-    // o `x-request-id` do CultBR: guardado no opportunity para correlacionar um envio com o log deles
-    public function getRequestId()
-    {
-        return $this->requestId;
     }
 }
