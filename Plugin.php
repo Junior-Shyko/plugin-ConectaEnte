@@ -2,12 +2,14 @@
 
 namespace ConectaEnte;
 
+use ConectaEnte\Jobs\SendOpportunityJob;
 use ConectaEnte\Metadata\CultBrMetadata;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
 use ConectaEnte\Services\PublicationRequirements;
 use ConectaEnte\Services\PublicationStamp;
+use ConectaEnte\Services\SendEligibility;
 use ConectaEnte\Services\SealedOpportunity;
 use Doctrine\ORM\Events;
 use MapasCulturais\App;
@@ -27,6 +29,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->hookCultBrTab($app);
         $this->hookPublicationRequirements($app);
         $this->hookPublicationStamp($app);
+        $this->hookSendOpportunity($app);
 
         $app->log->debug('[ConectaEnte] _init() mode=' . Config::mode());
 
@@ -151,6 +154,8 @@ class Plugin extends \MapasCulturais\Plugin
         $app->registerController('conecta-ente', Controllers\ConectaEnteController::class);
 
         CultBrMetadata::register($this);
+        $this->registerOpportunityMetadata(CultBrMetadata::PAR_EDITAL_ID, ['label' => i::__('ID do edital no CultBR'), 'type' => 'string']);
+        $this->registerOpportunityMetadata(CultBrMetadata::REQUEST_ID, ['label' => i::__('Request ID da última resposta do CultBR'), 'type' => 'string']);
         $this->registerOpportunityMetadata(CultBrMetadata::PUBLICATION_DATE, [
             'label' => i::__('Data de publicação do edital'),
             'type' => 'date',
@@ -164,6 +169,46 @@ class Plugin extends \MapasCulturais\Plugin
         $app->hook('entity(Opportunity).save:before', function () {
             (new PublicationStamp())->stamp($this);
         });
+    }
+
+    private function hookSendOpportunity(App $app)
+    {
+        $app->registerJobType(new SendOpportunityJob(SendOpportunityJob::SLUG));
+
+        $app->hook('entity(Opportunity).update:finish', function () {
+            Plugin::scheduleSend($this);
+        });
+
+        // selar uma oportunidade já publicada não passa pelo save da oportunidade: a relação tem o próprio gatilho
+        $app->hook('entity(OpportunitySealRelation).save:finish', function () {
+            Plugin::scheduleSend($this->owner);
+        });
+    }
+
+    /**
+     * Enfileira o envio da raiz, se ela for elegível. Editar uma fase reenvia a raiz (decisão de #48).
+     */
+    public static function scheduleSend($opportunity)
+    {
+        $root = $opportunity;
+
+        while ($root->parent) {
+            $root = $root->parent;
+        }
+
+        $eligibility = (new SendEligibility(new FederativeEntityRepository()))->check($root);
+
+        if (!$eligibility->isEligible()) {
+            return;
+        }
+
+        App::i()->enqueueOrReplaceJob(
+            SendOpportunityJob::SLUG,
+            ['opportunityId' => $root->id, 'entityId' => $eligibility->getEntity()->getId()],
+            'now',
+            Config::retryDelay(),
+            Config::maxAttempts()
+        );
     }
 
     private function hookPublicationRequirements(App $app)
