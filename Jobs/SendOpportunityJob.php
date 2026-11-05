@@ -85,13 +85,12 @@ class SendOpportunityJob extends JobType
                 $opportunity->setMetadata(CultBrMetadata::PAR_EDITAL_ID, $report->getParEditalId());
             }
 
-            if ($report->getRequestId() !== null) {
-                $opportunity->setMetadata(CultBrMetadata::REQUEST_ID, $report->getRequestId());
-            }
+            // sempre grava (null limpa): o request id é do mesmo envio do id_par_edital, não pode sobrar o de um envio anterior
+            $opportunity->setMetadata(CultBrMetadata::REQUEST_ID, $report->getRequestId());
 
             $opportunity->saveMetadata();
         } catch (\Throwable $e) {
-            App::i()->log->error("[ConectaEnte] envio aceito, mas não foi possível gravar a correlação: {$e->getMessage()}");
+            App::i()->log->error("[ConectaEnte] envio aceito, mas não foi possível gravar a correlação (id_par_edital: {$report->getParEditalId()}, request_id: {$report->getRequestId()}): {$e->getMessage()}");
         }
     }
 

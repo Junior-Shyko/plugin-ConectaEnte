@@ -155,7 +155,7 @@ class Plugin extends \MapasCulturais\Plugin
 
         CultBrMetadata::register($this);
         $this->registerOpportunityMetadata(CultBrMetadata::PAR_EDITAL_ID, ['label' => i::__('ID do edital no CultBR'), 'type' => 'string']);
-        $this->registerOpportunityMetadata(CultBrMetadata::REQUEST_ID, ['label' => i::__('Request ID da última resposta do CultBR'), 'type' => 'string']);
+        $this->registerOpportunityMetadata(CultBrMetadata::REQUEST_ID, ['label' => i::__('Request ID do último envio aceito pelo CultBR'), 'type' => 'string']);
         $this->registerOpportunityMetadata(CultBrMetadata::PUBLICATION_DATE, [
             'label' => i::__('Data de publicação do edital'),
             'type' => 'date',

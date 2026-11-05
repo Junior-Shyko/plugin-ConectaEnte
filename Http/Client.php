@@ -101,7 +101,10 @@ class Client
         if ($response->getStatus() === 200) {
             $decoded = $response->decoded();
 
-            return SendResult::ok($decoded === null ? [] : $decoded, $requestId);
+            // 200 sem JSON é página de proxy/balanceador, não aceite do CultBR: retenta como indisponível
+            return $decoded === null
+                ? SendResult::unreachable(200, 'resposta 200 sem JSON')
+                : SendResult::ok($decoded, $requestId);
         }
 
         return SendResult::rejected($this->readDetail($response->json(), $response->getStatus(), $this->translate('A Plataforma CultBR recusou o envio do edital (HTTP %d).')), $response->getStatus());
