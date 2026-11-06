@@ -23,6 +23,8 @@ Each key is read from `$app->config['conectaente.<key>']`, then from the environ
 |---|---|---|---|
 | `mode` | `CONECTAENTE_MODE` | `dev` | `live` sends for real; any other value is simulated |
 | `host` | `CONECTAENTE_HOST` | empty | Conecta Ente host (the contract does not declare `servers`) |
+| `max_attempts` | `CONECTAENTE_MAX_ATTEMPTS` | `3` | Attempts per send, **counting the first one** (3 = one attempt plus up to two retries); minimum 1 |
+| `retry_delay` | `CONECTAENTE_RETRY_DELAY` | `+15 seconds` | Interval between attempts (a `DateInterval` string; fixed, no backoff) |
 
 > Warning: the default is **simulated**. Forgetting `CONECTAENTE_MODE=live` in production makes the
 > plugin simulate silently.
@@ -160,6 +162,65 @@ or first-class callables. Check with:
 ```bash
 docker run --rm -v "$PWD":/app -w /app php:7.2-cli sh -c \
   'find . -name "*.php" -not -path "./vendor/*" -print0 | xargs -0 -n1 php -l'
+```
+
+## Sending to CultBR (queue and retry)
+
+A send never happens inside the user's request. Publishing, editing a published opportunity or sealing an
+already published one only **enqueues** a job (`Jobs/SendOpportunityJob`, slug `conectaente-send-opportunity`);
+the call to CultBR runs later, in the jobs worker. `Plugin::scheduleSend()` always enqueues the **root**
+opportunity (editing a phase resends the root), and a failure while scheduling is logged and never breaks the
+save.
+
+- **One job per opportunity.** The job id is `conectaente-send:<opportunity id>` and the plugin uses
+  `enqueueOrReplaceJob`, so N saves in a row become a single send.
+- **Eligibility is checked again when the job runs**, since the state may have changed since it was enqueued.
+  If the opportunity or the entity is gone, or it stopped being eligible, the outcome is `abandoned`.
+- **Mode `dev` never sends.** The payload is built and validated, nothing leaves the server, and the outcome is
+  `simulated`, never `success`.
+
+### Outcomes and retry
+
+`Services/RetryPolicy` classifies the answer by HTTP status range:
+
+| Answer | Outcome |
+|---|---|
+| `200` with a JSON body | `success` |
+| connection failure, `5xx`, or `200` without JSON (proxy or load balancer page) | `pending` (retried) until `max_attempts`, then `error` |
+| any other status, such as `400`, `401`, `403`, `422` | `rejected`, **not** retried (a client answer does not change by itself) |
+| opportunity or entity gone, or no longer eligible | `abandoned` |
+| mode `dev` | `simulated` |
+
+`408` and `429` are also `rejected`: the rule is by range, not per code. The reason is the `detail` sent by
+CultBR (a list of `field: message` on `422`) or, when the body is not JSON, `HTTP <status>`.
+
+The job always returns `true` and wraps everything in `try/catch (\Throwable)`: a job that throws or returns
+`false` stays stuck in "processing" forever in the core. An unexpected failure ends as `error`. Retries are the
+core's own recurrence for the same job (`iterations` = `max_attempts`, `intervalString` = `retry_delay`); the
+attempt counter is the core's `iterationsCount`, not a field of the job `data`.
+
+On `success` the plugin stores `id_par_edital` and the `x-request-id` of the response in the opportunity
+metadata (`conectaente_*`), the key to match a send with CultBR's log. A failure while saving them is logged
+with both ids and does not turn an accepted send into an error. There is no per-attempt history yet.
+
+Each outcome is written to the application log as `[ConectaEnte] envio da oportunidade <id>: <outcome>`,
+with the reason when there is one. A `rejected` or `error` reason shows up **only there**.
+
+### Jobs worker
+
+The send only happens if the core's jobs worker is running. In the Docker images, `compose/entrypoint.sh`
+starts `/jobs-cron.sh` in the background; it loops running `scripts/execute-job.sh`, which runs
+`src/protected/tools/execute-job.php` → `App::executeJob()`. Tunable by environment variable:
+
+| Variable | Effect |
+|---|---|
+| `NUM_PROCESSES` | Maximum parallel workers (default: number of CPU cores) |
+| `JOBS_INTERVAL` | Seconds between worker runs (default: 1) |
+
+Without a worker (or outside Docker) nothing is sent: jobs pile up in the `job` table. To run one pass by hand:
+
+```bash
+scripts/execute-job.sh
 ```
 
 ## Tests
