@@ -69,6 +69,12 @@ class CurlTransport implements TransportInterface
     {
         $headers = [];
         curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($curl, $line) use (&$headers) {
+            // linha de status = início de uma resposta (a final pode vir depois de um 100-continue ou de um proxy):
+            // só os cabeçalhos da última contam, senão o x-request-id de uma intermediária vazaria para a final
+            if (stripos($line, 'HTTP/') === 0) {
+                $headers = [];
+            }
+
             $parts = explode(':', $line, 2);
 
             if (count($parts) === 2) {

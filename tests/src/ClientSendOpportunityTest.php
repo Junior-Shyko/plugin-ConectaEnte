@@ -29,6 +29,15 @@ class ClientSendOpportunityTest extends TestCase
         $this->assertSame('req-123', $result->getRequestId());
     }
 
+    public function testRequestIdHeaderLookupIsCaseInsensitive()
+    {
+        $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 42], ['X-Request-Id' => 'req-456']);
+
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+
+        $this->assertSame('req-456', $result->getRequestId());
+    }
+
     public function testStatus200WithoutJsonIsUnreachableAndRetryable()
     {
         $transport = FakeTransport::replying(200, '<html>proxy</html>', []);

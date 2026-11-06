@@ -96,7 +96,9 @@ class Client
             return SendResult::unreachable($response->getStatus(), $response->getTransportError());
         }
 
-        $requestId = isset($response->getHeaders()['x-request-id']) ? $response->getHeaders()['x-request-id'] : null;
+        // nomes de cabeçalho HTTP não diferenciam maiúsculas: não depende do transport normalizar
+        $headers = array_change_key_case($response->getHeaders(), CASE_LOWER);
+        $requestId = isset($headers['x-request-id']) ? $headers['x-request-id'] : null;
 
         if ($response->getStatus() === 200) {
             $decoded = $response->decoded();
