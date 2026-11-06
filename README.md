@@ -241,7 +241,24 @@ tests/run.sh
 tests/run.sh --filter testEditalType
 ```
 
-Tests live in `tests/src` (namespace `Tests\ConectaEnte`); `tests/bootstrap.php` loads the autoload.
+Pass a test file after the options to run only it: `tests/run.sh --filter Smoke` or `tests/run.sh tests/src/SmokeTest.php`
+(the path is relative to the plugin root).
+
+Layout:
+
+- `tests/phpunit.xml`: suite (`tests/src`, files ending in `Test.php`), bootstrap and the test environment.
+- `tests/bootstrap.php`: loads the composer autoload and the `ConectaEnte\` and `Tests\ConectaEnte\` namespaces.
+- `tests/src` (namespace `Tests\ConectaEnte`): the tests. `tests/src/Doubles` has `FakeTransport` (injected into
+  `Http\Client`, so no request leaves the container) and `FakeOpportunity`.
+- `SmokeTest` proves the plugin is wired without booting the `App`: it checks that `Plugin` extends the core plugin
+  and that the source registers the expected hooks and the send job.
+
+The environment is declared in `phpunit.xml`: `CONECTAENTE_MODE=dev` (sending is simulated), `CONECTAENTE_RETRY_DELAY=now`
+and an empty `CONECTAENTE_HOST`. Booting the real `App` (database and plugin loaded) is the job of the core suite, not of
+this one.
+
+Always point PHPUnit at this plugin's suite. Running the core suite (`tests/` at the repository root) is a separate
+command and needs PostgreSQL (`dev-scripts/run-tests.sh`).
 
 ## Publication requirements (#46)
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Suíte unitária do plugin: sem banco, sem HTTP, sem subir o App. Os caminhos são relativos a este arquivo. -->
+<phpunit bootstrap="bootstrap.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="ConectaEnte">
+            <directory suffix="Test.php">src</directory>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <!-- modo dev declarado: o envio é simulado e nenhuma requisição sai do container -->
+        <env name="CONECTAENTE_MODE" value="dev" force="true"/>
+        <!-- 'now' para o atraso de retentativa não fazer a fila esperar -->
+        <env name="CONECTAENTE_RETRY_DELAY" value="now" force="true"/>
+        <!-- sem credencial e sem host: um teste que tentasse enviar de verdade falharia na hora -->
+        <env name="CONECTAENTE_HOST" value="" force="true"/>
+    </php>
+</phpunit>
