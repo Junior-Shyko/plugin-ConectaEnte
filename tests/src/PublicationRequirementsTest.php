@@ -145,6 +145,33 @@ class PublicationRequirementsTest extends TestCase
         $this->assertSame([], $this->missing([Meta::PAR_GOAL_ID => ' 3 ']));
     }
 
+    public function testParMessagesReadAsSentencesWithTheArticleOfTheName()
+    {
+        $missing = $this->missing([Meta::PAR_EXERCISE_ID => '', Meta::PAR_GOAL_ID => null, Meta::PAR_ACTION_ID => 'abc']);
+
+        $this->assertSame(['O Exercício do PAR é obrigatório.'], $missing[Meta::PAR_EXERCISE_ID]);
+        $this->assertSame(['A Meta do PAR é obrigatório.'], $missing[Meta::PAR_GOAL_ID]);
+        $this->assertSame(['A Ação do PAR não guarda um id do PAR: refaça a seleção.'], $missing[Meta::PAR_ACTION_ID]);
+    }
+
+    // o editable.js põe a mensagem num atributo title sem escapar: uma aspas dupla corta o texto na metade
+    public function testNoMessageHasAnAsciiDoubleQuoteThatWouldCutTheTooltip()
+    {
+        $missing = $this->missing(array_fill_keys([
+            'numberVacancies', Meta::TOTAL_RESOURCE, Meta::PROPONENT_TYPES, 'shortDescription', 'registrationFrom',
+            'registrationTo', Meta::EXECUTION_TYPE, Meta::SEGMENTS, Meta::CULTURAL_STAGES, Meta::THEMATIC_AGENDAS,
+            Meta::PRIORITY_TERRITORIES, Meta::FUNDING_SOURCES, Meta::QUOTA_RESERVATION, Meta::REGISTRATION_CHANNELS,
+            Meta::AFFIRMATIVE_ACTIONS, Meta::PAR_EXERCISE_ID, Meta::PAR_GOAL_ID, Meta::PAR_ACTION_ID, Meta::PAR_ACTIVITY_ID,
+        ], null), false);
+
+        $this->assertNotEmpty($missing);
+        foreach ($missing as $key => $messages) {
+            foreach ($messages as $message) {
+                $this->assertStringNotContainsString('"', $message, $key);
+            }
+        }
+    }
+
     public function testAParIdAboveTheIntegerLimitIsRejectedBeforeThePayloadTruncatesIt()
     {
         $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => '9223372036854775808']));
