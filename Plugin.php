@@ -2,11 +2,16 @@
 
 namespace ConectaEnte;
 
+use ConectaEnte\Entities\FederativeEntity;
+use ConectaEnte\Http\Client;
+use ConectaEnte\Jobs\ParInformationFetchJob;
+use ConectaEnte\Jobs\ParInformationSyncJob;
 use ConectaEnte\Jobs\SendOpportunityJob;
 use ConectaEnte\Metadata\CultBrMetadata;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
+use ConectaEnte\Services\ParInformationService;
 use ConectaEnte\Services\PublicationRequirements;
 use ConectaEnte\Services\PublicationStamp;
 use ConectaEnte\Services\SendEligibility;
@@ -30,6 +35,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->hookPublicationRequirements($app);
         $this->hookPublicationStamp($app);
         $this->hookSendOpportunity($app);
+        $this->hookParInformation($app);
 
         $app->log->debug('[ConectaEnte] _init() mode=' . Config::mode());
 
@@ -183,6 +189,47 @@ class Plugin extends \MapasCulturais\Plugin
         $app->hook('entity(OpportunitySealRelation).save:finish', function () {
             Plugin::scheduleSend($this->owner);
         });
+    }
+
+    private function hookParInformation(App $app)
+    {
+        $app->registerJobType(new ParInformationFetchJob(ParInformationFetchJob::SLUG));
+        $app->registerJobType(new ParInformationSyncJob(ParInformationSyncJob::SLUG));
+    }
+
+    public static function parInformationService()
+    {
+        $app = App::i();
+
+        return new ParInformationService(Client::fromConfig(), $app->mscache, Config::parTtl(), function ($message) use ($app) {
+            $app->log->warning('[ConectaEnte] ' . $message);
+        });
+    }
+
+    /**
+     * Cadastro com token novo ou reverificado: descarta a árvore antiga, busca a nova agora e agenda a
+     * sincronização periódica. Falha de agendamento é logada e não derruba o cadastro.
+     */
+    public static function scheduleParInformation(FederativeEntity $entity)
+    {
+        $app = App::i();
+
+        try {
+            self::parInformationService()->forget($entity);
+
+            self::requestParFetch($entity);
+
+            $ttl = Config::parTtl();
+            $app->enqueueOrReplaceJob(ParInformationSyncJob::SLUG, [], "+{$ttl} seconds", "+{$ttl} seconds", ParInformationSyncJob::ITERATIONS);
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] could not schedule the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
+        }
+    }
+
+    /** Enfileira a busca de um ente, sem esperar pela API. */
+    public static function requestParFetch(FederativeEntity $entity)
+    {
+        App::i()->enqueueOrReplaceJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), 'now', '', 1);
     }
 
     /**

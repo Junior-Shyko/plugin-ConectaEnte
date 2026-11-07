@@ -17,11 +17,17 @@ class FederativeEntityService
     private $verifyToken;
     private $canManage;
     private $newEntity;
+    private $tokenChanged;
 
-    public function __construct(FederativeEntityRepository $repository, callable $canManage, callable $verifyToken = null, callable $newEntity = null)
+    /**
+     * @param callable|null $tokenChanged recebe o ente salvo com um token novo ou reverificado (a árvore do PAR é buscada de novo)
+     */
+    public function __construct(FederativeEntityRepository $repository, callable $canManage, callable $verifyToken = null, callable $newEntity = null, callable $tokenChanged = null)
     {
         $this->newEntity = $newEntity ?: function () {
             return new FederativeEntity();
+        };
+        $this->tokenChanged = $tokenChanged ?: function () {
         };
         $this->repository = $repository;
         $this->verifyToken = $verifyToken ?: function ($token) {
@@ -89,7 +95,7 @@ class FederativeEntityService
         $ente->setToken($token);
         $ente->setCnpj($validation->getDocument());
 
-        return $this->save($ente, 201);
+        return $this->saveWithToken($ente, 201);
     }
 
     public function update($id, array $input)
@@ -151,6 +157,8 @@ class FederativeEntityService
         if ($validation !== null) {
             $ente->setToken($this->text($input, 'token'));
             $ente->setCnpj($validation->getDocument());
+
+            return $this->saveWithToken($ente, 200);
         }
 
         return $this->save($ente, 200);
@@ -188,6 +196,17 @@ class FederativeEntityService
             'token_registered' => $token !== '',
             'token_last4' => strlen($token) > 8 ? substr($token, -4) : null,
         ];
+    }
+
+    private function saveWithToken(FederativeEntity $ente, $status)
+    {
+        $result = $this->save($ente, $status);
+
+        if (!$result->isError()) {
+            call_user_func($this->tokenChanged, $ente);
+        }
+
+        return $result;
     }
 
     private function save(FederativeEntity $ente, $status)
