@@ -150,7 +150,7 @@ class PublicationRequirementsTest extends TestCase
         $missing = $this->missing([Meta::PAR_EXERCISE_ID => '', Meta::PAR_GOAL_ID => null, Meta::PAR_ACTION_ID => 'abc']);
 
         $this->assertSame(['O Exercício do PAR é obrigatório.'], $missing[Meta::PAR_EXERCISE_ID]);
-        $this->assertSame(['A Meta do PAR é obrigatório.'], $missing[Meta::PAR_GOAL_ID]);
+        $this->assertSame(['A Meta do PAR é obrigatória.'], $missing[Meta::PAR_GOAL_ID]);
         $this->assertSame(['A Ação do PAR não guarda um id do PAR: refaça a seleção.'], $missing[Meta::PAR_ACTION_ID]);
     }
 

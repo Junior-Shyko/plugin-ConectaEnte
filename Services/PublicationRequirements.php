@@ -114,22 +114,23 @@ class PublicationRequirements
      */
     private function parErrors($opportunity)
     {
-        // sem aspas e com o artigo do nome: a mensagem vai para um atributo title no front, e aspas o cortariam
+        // sem aspas e com o artigo e o gênero do nome: a mensagem vai para um atributo title no front, e aspas o cortariam
         $subjects = [
-            Meta::PAR_EXERCISE_ID => i::__('O Exercício do PAR'),
-            Meta::PAR_GOAL_ID => i::__('A Meta do PAR'),
-            Meta::PAR_ACTION_ID => i::__('A Ação do PAR'),
-            Meta::PAR_ACTIVITY_ID => i::__('A Atividade do PAR'),
+            Meta::PAR_EXERCISE_ID => [i::__('O Exercício do PAR'), i::__('é obrigatório.')],
+            Meta::PAR_GOAL_ID => [i::__('A Meta do PAR'), i::__('é obrigatória.')],
+            Meta::PAR_ACTION_ID => [i::__('A Ação do PAR'), i::__('é obrigatória.')],
+            Meta::PAR_ACTIVITY_ID => [i::__('A Atividade do PAR'), i::__('é obrigatória.')],
         ];
         $errors = [];
 
         foreach (Meta::PAR_KEYS as $key) {
             $value = trim((string) $opportunity->$key);
+            [$subject, $required] = $subjects[$key];
 
             if ($value === '') {
-                $errors[$key] = [sprintf(i::__('%s é obrigatório.'), $subjects[$key])];
+                $errors[$key] = [$subject . ' ' . $required];
             } elseif (Meta::parIdOf($value) === null) {
-                $errors[$key] = [sprintf(i::__('%s não guarda um id do PAR: refaça a seleção.'), $subjects[$key])];
+                $errors[$key] = [sprintf(i::__('%s não guarda um id do PAR: refaça a seleção.'), $subject)];
             }
         }
 
