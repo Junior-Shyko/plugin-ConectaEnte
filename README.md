@@ -316,7 +316,9 @@ requires is missing. Drafts, opportunities without an entity seal and phases are
 - The check runs on `entity(Opportunity).publish:before`. Unlike `save:before` (Doctrine `preUpdate`, inside
   `flush()`), stopping there does not close the EntityManager, and the entity already holds what the `PUT`
   sent. `PUT`/`PATCH` with `status` and the publish route all end in `Entity::publish()`.
-- The answer is `HTTP 400` with `{"error": true, "data": {key: [messages]}}`, the shape the Mapas front maps to
+- The answer is `{"error": true, "data": {key: [messages]}}`: `HTTP 200` for AJAX requests (the Mapas front, whose
+  `error:` handler would lose the messages on a 400), `HTTP 400` for any other client, so an API client does not
+  read the block as a published opportunity. The shape is the one the Mapas front maps to
   the fields (keys that match a `data-edit` are marked, the others are shown as messages). The opportunity stays
   in draft.
 - The tab marks the required fields with `*`.
