@@ -65,15 +65,12 @@ class OpportunityPayload
         'ente_federado',
     ];
 
-    /**
-     * Ids do PAR, lidos dos metadados que a #51 registra. Até lá, nulos: o envio real é recusado com
-     * 422 e a validação local os nomeia.
-     */
+    /** Ids do PAR: campo do contrato → metadado da oportunidade. */
     const PAR_METADATA = [
-        'id_exercicio' => 'parExercicioId',
-        'id_meta' => 'parMetaId',
-        'id_acao' => 'parAcaoId',
-        'id_atividade' => 'parAtividadeId',
+        'id_exercicio' => Meta::PAR_EXERCISE_ID,
+        'id_meta' => Meta::PAR_GOAL_ID,
+        'id_acao' => Meta::PAR_ACTION_ID,
+        'id_atividade' => Meta::PAR_ACTIVITY_ID,
     ];
 
     /**
@@ -203,9 +200,9 @@ class OpportunityPayload
 
     private function parId($value)
     {
-        $text = (string) $value;
+        $id = Meta::parIdOf($value);
 
-        return ctype_digit($text) ? (int) $text : null;
+        return $id === null ? null : (int) $id;
     }
 
     private function text($value)

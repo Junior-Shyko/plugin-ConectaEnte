@@ -40,6 +40,10 @@ class PublicationRequirementsTest extends TestCase
             'registrationTo' => new \DateTime('2026-02-01'),
             Meta::TOTAL_RESOURCE => '50000,50',
             Meta::PROPONENT_TYPES => 'pessoa_fisica;mei_microempreendedor_individual',
+            Meta::PAR_EXERCISE_ID => '2026',
+            Meta::PAR_GOAL_ID => '3',
+            Meta::PAR_ACTION_ID => '4',
+            Meta::PAR_ACTIVITY_ID => '5',
             Meta::EXECUTION_TYPE => 'Execução cultural',
             Meta::SEGMENTS => '__edital_nao_se_direciona__',
             Meta::SEGMENTS_OTHER => null,
@@ -79,6 +83,10 @@ class PublicationRequirementsTest extends TestCase
             'shortDescription' => '',
             'registrationFrom' => null,
             'registrationTo' => null,
+            Meta::PAR_EXERCISE_ID => null,
+            Meta::PAR_GOAL_ID => null,
+            Meta::PAR_ACTION_ID => null,
+            Meta::PAR_ACTIVITY_ID => null,
             Meta::EXECUTION_TYPE => null,
             Meta::SEGMENTS => null,
             Meta::CULTURAL_STAGES => null,
@@ -98,6 +106,10 @@ class PublicationRequirementsTest extends TestCase
             'shortDescription' => 'Descrição curta',
             'registrationFrom' => 'Data inicial',
             'registrationTo' => 'Data final',
+            Meta::PAR_EXERCISE_ID => 'Exercício do PAR',
+            Meta::PAR_GOAL_ID => 'Meta do PAR',
+            Meta::PAR_ACTION_ID => 'Ação do PAR',
+            Meta::PAR_ACTIVITY_ID => 'Atividade do PAR',
             Meta::EXECUTION_TYPE => 'Tipo de Edital',
             Meta::SEGMENTS => 'Segmento artístico-cultural',
             Meta::CULTURAL_STAGES => 'Etapa do fazer cultural',
@@ -114,6 +126,29 @@ class PublicationRequirementsTest extends TestCase
         foreach ($expected as $key => $name) {
             $this->assertStringContainsString($name, implode(' ', $missing[$key]), $key);
         }
+    }
+
+    public function testAPartialParSelectionDoesNotPublishAndNamesEveryMissingLevel()
+    {
+        $missing = $this->missing([Meta::PAR_ACTION_ID => null, Meta::PAR_ACTIVITY_ID => '']);
+
+        $this->assertSame([Meta::PAR_ACTION_ID, Meta::PAR_ACTIVITY_ID], array_keys($missing));
+        $this->assertStringContainsString('Ação do PAR', implode(' ', $missing[Meta::PAR_ACTION_ID]));
+        $this->assertStringContainsString('Atividade do PAR', implode(' ', $missing[Meta::PAR_ACTIVITY_ID]));
+    }
+
+    public function testParIdMustBeDigitsSoThePayloadDoesNotSendADifferentValue()
+    {
+        $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => 'abc']));
+        $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => '3.5']));
+        $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => '-1']));
+        $this->assertSame([], $this->missing([Meta::PAR_GOAL_ID => ' 3 ']));
+    }
+
+    public function testAParIdAboveTheIntegerLimitIsRejectedBeforeThePayloadTruncatesIt()
+    {
+        $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => '9223372036854775808']));
+        $this->assertSame([], $this->missing([Meta::PAR_GOAL_ID => '9223372036854775807']));
     }
 
     public function testLongDescriptionSubstitutesShortDescription()

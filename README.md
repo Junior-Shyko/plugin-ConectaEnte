@@ -25,6 +25,7 @@ Each key is read from `$app->config['conectaente.<key>']`, then from the environ
 | `host` | `CONECTAENTE_HOST` | empty | Conecta Ente host (the contract does not declare `servers`) |
 | `max_attempts` | `CONECTAENTE_MAX_ATTEMPTS` | `3` | Attempts per send, **counting the first one** (3 = one attempt plus up to two retries); minimum 1 |
 | `retry_delay` | `CONECTAENTE_RETRY_DELAY` | `+15 seconds` | Interval between attempts (a `DateInterval` string; fixed, no backoff) |
+| `par_ttl` | `CONECTAENTE_PAR_TTL` | `3600` | Seconds the PAR tree of each entity stays in the cache; minimum 60 |
 
 > Warning: the default is **simulated**. Forgetting `CONECTAENTE_MODE=live` in production makes the
 > plugin simulate silently.
@@ -89,6 +90,41 @@ check runs in `persist()`, before the `flush` transaction opens, so a row lock w
 database constraint would mean changing `seal_relation`, a core table. Relations still waiting for a
 `flush` in the same request are seen.
 
+## PAR tree per federative entity (#52)
+
+The PAR tree (exercise → goal → action → activity) comes from `GET /api/v1/par-information` on CultBR, with
+the entity's token in the `token` header and pagination by `skip`/`limit`. The response is a list of
+entities (`data`), and the tree used is the one whose `cnpj` is the entity's CNPJ; the CNPJs of the others
+are logged, never used.
+
+- **A page request never calls the API.** `ConectaEnte\Services\ParInformationService::cached()` reads
+  only the cache; with no entry it returns `pending`, and the endpoint enqueues a fetch for the entity.
+- **Cache per entity** (`conectaente:par-information:<sha1>`, `ttl` = `par_ttl`) in the `mscache` provider,
+  not `cache`: its namespace is fixed, so the jobs (which run outside a subsite) and the pages read the same
+  entry. The key hashes the mode and host, the entity, its CNPJ and its token, so another environment or a
+  token that was replaced never reads an old entry. Definitive answers are cached (a tree, or "no tree for
+  this CNPJ"). A failed call is kept for 5 minutes under `:failure`, so the page shows `unavailable` and the
+  next fetch tries again.
+- **Jobs.** `conectaente-par-fetch` fetches and caches, one job per request (its id carries a unique
+  `requestId`, so a request made while another fetch runs is not dropped). `conectaente-par-sync` enqueues a
+  fetch per entity, spaced by one second, and repeats through the core's recurrence every `par_ttl` seconds
+  (`ITERATIONS` times). Both always return `true`; a failure is logged and does not stop the others.
+- **Scheduling.** Saving a token (create, or update that verifies a token, accepted) forgets the cached tree,
+  enqueues the fetch now and makes sure the sync exists. A rejected token schedules nothing. The page request
+  also makes sure the sync exists, so installations that already had entities get it on the first visit. Both
+  "make sure" steps use a flag of one `par_ttl` in `mscache`, so the sync is scheduled once per period and a
+  new token does not postpone it. A page request queues at most one fetch per entity per minute.
+- **Endpoint.** `GET /conecta-ente/parInformation/<opportunityId>` answers the tree of the opportunity's
+  sealed entity, from the cache, in the shape of the `v7` route: `available`, `simulated`, `reason`,
+  `message` and `exercicios` (`id`, `ano`, `metas` → `acoes` → `atividades`). `reason` is `pending`,
+  `notFound` or `unavailable` when there is no tree; `pending` and `unavailable` also queue a fetch (rate
+  limited above). The UI that picks from it is #53.
+- **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
+
+Not verified here: the production contract still lists this path as absent (the #52 note), so it must be
+confirmed before relying on it; the core's recurrence of `conectaente-par-sync` and the route
+`parInformation` (argument and action name) need a run of the worker and the app.
+
 ## CultBR fields on the opportunity
 
 CultBR requires data that Mapas v5 core does not have. The plugin registers it itself
@@ -100,6 +136,11 @@ registration order does not matter):
 | `conectaente_executionType` | select | `ExecutionType` |
 | `conectaente_segments`, `conectaente_culturalStages`, `conectaente_thematicAgendas`, `conectaente_priorityTerritories` | multiselect | `Segment`, `CulturalStage`, `ThematicAgenda`, `PriorityTerritory` |
 | `conectaente_segmentsOther`, `conectaente_culturalStagesOther`, `conectaente_thematicAgendasOther` | string | the "specify" detail of the "Other" option |
+| `conectaente_parExercicioId`, `conectaente_parMetaId`, `conectaente_parAcaoId`, `conectaente_parAtividadeId` | string | the PAR ids (digits only), the hierarchy exercise → goal → action → activity; all four are required to publish (`PublicationRequirements::parErrors()`) and go out as integers in `id_exercicio`, `id_meta`, `id_acao`, `id_atividade` |
+
+The four PAR ids are typed in the tab by hand for now (`type: number` in the editable field); the cascade
+that picks them from the PAR tree comes with #53. Only the chain order and presence are checked; checking
+that the four ids form a valid path of the tree is #52.
 
 Keys, labels and options follow the plugin's `develop` branch (v7), so the stored data is the same in both
 versions. Each multiselect starts with the synthetic options `TargetingOption::NOT_TARGETED`
@@ -241,7 +282,24 @@ tests/run.sh
 tests/run.sh --filter testEditalType
 ```
 
-Tests live in `tests/src` (namespace `Tests\ConectaEnte`); `tests/bootstrap.php` loads the autoload.
+Pass a test file after the options to run only it: `tests/run.sh --filter Smoke` or `tests/run.sh tests/src/SmokeTest.php`
+(the path is relative to the plugin root).
+
+Layout:
+
+- `tests/phpunit.xml`: suite (`tests/src`, files ending in `Test.php`), bootstrap and the test environment.
+- `tests/bootstrap.php`: loads the composer autoload and the `ConectaEnte\` and `Tests\ConectaEnte\` namespaces.
+- `tests/src` (namespace `Tests\ConectaEnte`): the tests. `tests/src/Doubles` has `FakeTransport` (injected into
+  `Http\Client`, so no request leaves the container) and `FakeOpportunity`.
+- `SmokeTest` proves the plugin is wired without booting the `App`: it checks that `Plugin` extends the core plugin
+  and that the source registers the expected hooks and the send job.
+
+The environment is declared in `phpunit.xml`: `CONECTAENTE_MODE=dev` (sending is simulated), `CONECTAENTE_RETRY_DELAY=now`
+and an empty `CONECTAENTE_HOST`. Booting the real `App` (database and plugin loaded) is the job of the core suite, not of
+this one.
+
+Always point PHPUnit at this plugin's suite. Running the core suite (`tests/` at the repository root) is a separate
+command and needs PostgreSQL (`dev-scripts/run-tests.sh`).
 
 ## Publication requirements (#46)
 

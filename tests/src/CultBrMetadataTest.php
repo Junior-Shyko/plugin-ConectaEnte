@@ -26,6 +26,10 @@ class CultBrMetadataTest extends TestCase
             'conectaente_priorityTerritories',
             'conectaente_totalResource',
             'conectaente_proponentTypes',
+            'conectaente_parExercicioId',
+            'conectaente_parMetaId',
+            'conectaente_parAcaoId',
+            'conectaente_parAtividadeId',
             'conectaente_fundingSources',
             'conectaente_quotaReservation',
             'conectaente_registrationChannels',
@@ -34,6 +38,32 @@ class CultBrMetadataTest extends TestCase
 
         foreach (Meta::keys() as $key) {
             $this->assertStringStartsWith(Meta::PREFIX, $key);
+        }
+    }
+
+    public function testParIdOfTrimsAndKeepsOnlyDigitsWithinTheIntegerLimit()
+    {
+        $this->assertSame('3', Meta::parIdOf(' 3 '));
+        $this->assertSame('3', Meta::parIdOf('003'));
+        $this->assertSame('9223372036854775807', Meta::parIdOf('9223372036854775807'));
+        $this->assertNull(Meta::parIdOf('9223372036854775808'));
+        $this->assertNull(Meta::parIdOf('3.5'));
+        $this->assertNull(Meta::parIdOf('-1'));
+        $this->assertNull(Meta::parIdOf(''));
+        $this->assertNull(Meta::parIdOf(null));
+    }
+
+    public function testParIdsAreStringsWithTheSameKeysInTheHierarchyOrder()
+    {
+        $this->assertSame([
+            'conectaente_parExercicioId',
+            'conectaente_parMetaId',
+            'conectaente_parAcaoId',
+            'conectaente_parAtividadeId',
+        ], Meta::PAR_KEYS);
+
+        foreach (Meta::PAR_KEYS as $key) {
+            $this->assertSame('string', Meta::definitions()[$key]['type'], $key);
         }
     }
 
