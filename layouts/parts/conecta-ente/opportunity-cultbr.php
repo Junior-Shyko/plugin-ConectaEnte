@@ -49,18 +49,25 @@ $choices = [
         <?php endif; ?>
     <?php endforeach; ?>
 
-    <?php // provisório: o id do PAR é digitado até a cascata da #53 existir ?>
+    <?php
+    // a cascata do PAR (par-cascade.js, AngularJS): lê a árvore do cache e grava os quatro ids juntos
+    $parConfig = [
+        'levels' => array_map(function ($key) use ($definitions) {
+            return ['key' => $key, 'label' => $definitions[$key]['label']];
+        }, Meta::PAR_KEYS),
+        'texts' => [
+            'select' => i::__('Selecione'),
+            'update' => i::__('Atualizar'),
+            'loading' => i::__('Carregando as opções do PAR…'),
+            'unavailable' => i::__('Não foi possível carregar as opções do PAR. Tente atualizar.'),
+            'simulated' => i::__('Árvore simulada (modo de teste).'),
+            'noOptions' => i::__('O ente não tem exercícios no PAR.'),
+            'staleValue' => i::__('O id guardado para «%s» não está na árvore atual: refaça a seleção.'),
+        ],
+    ];
+    ?>
     <div id="conectaente-par" class="conectaente-par">
-        <?php foreach (Meta::PAR_KEYS as $key): ?>
-            <p>
-                <span class="label"><?= $definitions[$key]['label'] ?> *:</span>
-                <span class="js-editable"
-                      data-edit="<?= $key ?>"
-                      data-type="number"
-                      data-original-title="<?= htmlspecialchars($definitions[$key]['label'], ENT_QUOTES) ?>"
-                      data-emptytext="<?php i::esc_attr_e('Informe o id do PAR'); ?>"><?= htmlspecialchars((string) $entity->$key) ?></span>
-            </p>
-        <?php endforeach; ?>
+        <conecta-ente-par config="<?= htmlspecialchars(json_encode($parConfig), ENT_QUOTES) ?>"></conecta-ente-par>
     </div>
 
     <p>

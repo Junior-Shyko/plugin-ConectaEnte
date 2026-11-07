@@ -2,6 +2,7 @@
 
 namespace Tests\ConectaEnte;
 
+use ConectaEnte\Dto\ParInformation;
 use ConectaEnte\Metadata\CultBrMetadata as Meta;
 use ConectaEnte\Services\PublicationRequirements;
 use PHPUnit\Framework\TestCase;
@@ -69,9 +70,93 @@ class PublicationRequirementsTest extends TestCase
         return (new PublicationRequirements())->missingFields(new OpportunityDouble($this->complete($override), $hasRules));
     }
 
+    /** Árvore do ente com dois exercícios: 2026 (meta 3 → ação 4 → atividade 5, ação 9 → atividade 6) e 2027 (meta 8). */
+    private function tree()
+    {
+        return ParInformation::fromArray([
+            'cnpj' => '00000000000191',
+            'nome' => 'Ente de teste',
+            'exercicios' => [
+                ['id' => 2026, 'ano' => 2026, 'metas' => [
+                    ['id' => 3, 'nome' => 'Meta', 'valor' => '1500000.00', 'acoes' => [
+                        ['id' => 4, 'nome' => 'Ação', 'valor' => '1200000.00', 'atividades' => [['id' => 5, 'nome' => 'Edital', 'valor' => '700000.00']]],
+                        ['id' => 9, 'nome' => 'Outra ação', 'valor' => '1.00', 'atividades' => [['id' => 6, 'nome' => 'Outro edital', 'valor' => '1.00']]],
+                    ]],
+                ]],
+                ['id' => 2027, 'ano' => 2027, 'metas' => [
+                    ['id' => 8, 'nome' => 'Meta de 2027', 'valor' => '1.00', 'acoes' => []],
+                ]],
+            ],
+        ]);
+    }
+
+    private function chainMissing(array $override = [], ParInformation $tree = null)
+    {
+        return (new PublicationRequirements())->missingFields(new OpportunityDouble($this->complete($override)), $tree ?: $this->tree());
+    }
+
     public function testCompleteOpportunityHasNothingMissing()
     {
         $this->assertSame([], $this->missing());
+    }
+
+    public function testAChainThatExistsInTheTreeIsAccepted()
+    {
+        $this->assertSame([], $this->chainMissing());
+        $this->assertSame([], $this->chainMissing([Meta::PAR_EXERCISE_ID => '02026']));
+    }
+
+    public function testWithoutATreeTheChainIsNotChecked()
+    {
+        $missing = (new PublicationRequirements())->missingFields(new OpportunityDouble($this->complete([Meta::PAR_ACTIVITY_ID => '999'])), null);
+
+        $this->assertSame([], $missing);
+    }
+
+    public function testAnExerciseOutOfTheTreeIsNamed()
+    {
+        $missing = $this->chainMissing([Meta::PAR_EXERCISE_ID => '9999']);
+
+        $this->assertSame([Meta::PAR_EXERCISE_ID], array_keys($missing));
+        $this->assertStringContainsString('não existe na árvore', $missing[Meta::PAR_EXERCISE_ID][0]);
+    }
+
+    public function testAGoalOfAnotherExerciseIsRefused()
+    {
+        $missing = $this->chainMissing([Meta::PAR_EXERCISE_ID => '2027']);
+
+        $this->assertSame([Meta::PAR_GOAL_ID], array_keys($missing));
+        $this->assertStringContainsString('não pertence ao Exercício', $missing[Meta::PAR_GOAL_ID][0]);
+    }
+
+    public function testAnActionOfAnotherGoalIsRefused()
+    {
+        $missing = $this->chainMissing([Meta::PAR_GOAL_ID => '8', Meta::PAR_EXERCISE_ID => '2027', Meta::PAR_ACTION_ID => '4']);
+
+        $this->assertSame([Meta::PAR_ACTION_ID], array_keys($missing));
+    }
+
+    public function testAnActivityOfAnotherActionIsRefused()
+    {
+        $missing = $this->chainMissing([Meta::PAR_ACTION_ID => '4', Meta::PAR_ACTIVITY_ID => '6']);
+
+        $this->assertSame([Meta::PAR_ACTIVITY_ID], array_keys($missing));
+        $this->assertStringContainsString('não pertence à Ação', $missing[Meta::PAR_ACTIVITY_ID][0]);
+    }
+
+    public function testTheChainStopsAtTheFirstBrokenLevel()
+    {
+        $missing = $this->chainMissing([Meta::PAR_EXERCISE_ID => '9999', Meta::PAR_GOAL_ID => '9998', Meta::PAR_ACTIVITY_ID => '9997']);
+
+        $this->assertSame([Meta::PAR_EXERCISE_ID], array_keys($missing));
+    }
+
+    public function testAnInvalidIdIsLeftToTheIdRuleAndTheChainIsNotChecked()
+    {
+        $missing = $this->chainMissing([Meta::PAR_GOAL_ID => 'abc']);
+
+        $this->assertSame([Meta::PAR_GOAL_ID], array_keys($missing));
+        $this->assertStringContainsString('não guarda um id do PAR', $missing[Meta::PAR_GOAL_ID][0]);
     }
 
     public function testEveryMissingFieldIsNamedInItsMessage()

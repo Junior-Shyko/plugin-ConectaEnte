@@ -118,7 +118,12 @@ are logged, never used.
   sealed entity, from the cache, in the shape of the `v7` route: `available`, `simulated`, `reason`,
   `message` and `exercicios` (`id`, `ano`, `metas` → `acoes` → `atividades`). `reason` is `pending`,
   `notFound` or `unavailable` when there is no tree; `pending` and `unavailable` also queue a fetch (rate
-  limited above). The UI that picks from it is #53.
+  limited above). The edition tab reads it through `assets/js/conecta-ente/par-cascade.js` (AngularJS directive
+  `conecta-ente-par`): four selects in cascade, the four ids written together (a partial choice writes blanks),
+  and a «Atualizar» button when there is no tree.
+- **Publication chain.** On publish, with a tree in the cache, the chosen exercise → goal → action → activity must
+  be a path of that tree (`PublicationRequirements::parChainErrors()`); the first broken level is named. Without
+  a cached tree the chain is not checked. The send path (`SendEligibility`) does not check the chain.
 - **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
 
 Not verified here: the production contract still lists this path as absent (the #52 note), so it must be
