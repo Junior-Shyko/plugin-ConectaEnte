@@ -3,6 +3,7 @@
 namespace ConectaEnte\Http;
 
 use ConectaEnte\Config;
+use ConectaEnte\Dto\ParInformation;
 use ConectaEnte\Http\Transport\CurlTransport;
 use ConectaEnte\Http\Transport\FixtureTransport;
 use ConectaEnte\Http\Transport\TransportInterface;
@@ -12,6 +13,8 @@ class Client
 {
     const TYPE_SYSTEM = 'SISTEMA';
     const WRONG_TYPE_MESSAGE = 'Este token é válido, mas não é um token de sistema (ente).';
+    const PAR_PAGE_SIZE = 100;
+    const PAR_MAX_PAGES = 50;
 
     private $host;
     private $transport;
@@ -79,9 +82,75 @@ class Client
         return $this->transport->get($this->url('/health'))->getStatus() === 200;
     }
 
-    public function getParInformation($token)
+    /**
+     * Árvore do PAR do ente, casada pelo CNPJ. A API pagina e pode devolver mais de um ente para o
+     * mesmo token: só o do CNPJ informado é usado, e os outros CNPJs voltam no resultado para o log.
+     */
+    public function getParInformation($token, $cnpj)
     {
-        throw new \RuntimeException('getParInformation() é fase 2 — ver plan.md');
+        $simulated = $this->transport instanceof FixtureTransport;
+        $wanted = preg_replace('/\D/', '', (string) $cnpj);
+        $entities = [];
+        $skip = 0;
+        $complete = false;
+
+        for ($page = 0; $page < self::PAR_MAX_PAGES; $page++) {
+            $url = $this->url('/api/v1/par-information') . '?' . http_build_query(['skip' => $skip, 'limit' => self::PAR_PAGE_SIZE]);
+            $response = $this->transport->get($url, ['token' => $token]);
+
+            if (!$response->reachedServer()) {
+                return ParInformationResult::unavailable($this->translate('A Plataforma CultBR não respondeu à consulta do PAR.'), $simulated);
+            }
+
+            if ($response->getStatus() !== 200) {
+                return ParInformationResult::unavailable($this->readDetail($response->json(), $response->getStatus(), $this->translate('A Plataforma CultBR recusou a consulta do PAR (HTTP %d).')), $simulated);
+            }
+
+            $body = $response->decoded();
+
+            // corpo sem `data` é página de proxy ou contrato diferente: não vira árvore vazia, que pareceria "sem PAR"
+            if ($body === null || !isset($body['data']) || !is_array($body['data'])) {
+                return ParInformationResult::unavailable($this->translate('A Plataforma CultBR devolveu a consulta do PAR em formato inesperado.'), $simulated);
+            }
+
+            $entities = array_merge($entities, array_filter($body['data'], 'is_array'));
+
+            $hasNext = isset($body['pagination']['next']) && $body['pagination']['next'] !== null;
+
+            if (!$hasNext || $body['data'] === []) {
+                $complete = true;
+                break;
+            }
+
+            $skip += self::PAR_PAGE_SIZE;
+        }
+
+        if (!$complete) {
+            return ParInformationResult::unavailable($this->translate('A consulta do PAR tem mais páginas do que o limite; a árvore ficou incompleta.'), $simulated);
+        }
+
+        $match = null;
+        $others = [];
+
+        foreach ($entities as $raw) {
+            $tree = ParInformation::fromArray($raw);
+
+            if ($tree === null) {
+                continue;
+            }
+
+            if ($match === null && $tree->cnpj === $wanted) {
+                $match = $tree;
+            } else {
+                $others[] = $tree->cnpj;
+            }
+        }
+
+        if ($match === null) {
+            return ParInformationResult::notFound($this->translate('A Plataforma CultBR não tem árvore do PAR para o CNPJ deste ente.'), $simulated, $others);
+        }
+
+        return ParInformationResult::ok($match, $simulated, $others);
     }
 
     /**

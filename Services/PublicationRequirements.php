@@ -36,6 +36,7 @@ class PublicationRequirements
             $this->rulesFileErrors($opportunity),
             $this->descriptionErrors($opportunity),
             $this->registrationDateErrors($opportunity),
+            $this->parErrors($opportunity),
             $this->executionTypeErrors($opportunity),
             $this->targetingErrors($opportunity),
             $this->specificationErrors($opportunity),
@@ -55,7 +56,7 @@ class PublicationRequirements
             return [];
         }
 
-        return [self::NUMBER_VACANCIES => [i::__('O campo "Total de vagas" é obrigatório e deve ser um número inteiro maior que zero.')]];
+        return [self::NUMBER_VACANCIES => [i::__('O campo «Total de vagas» é obrigatório e deve ser um número inteiro maior que zero.')]];
     }
 
     private function totalResourceErrors($opportunity)
@@ -64,7 +65,7 @@ class PublicationRequirements
             return [];
         }
 
-        return [Meta::TOTAL_RESOURCE => [i::__('O campo "Valor total do edital" é obrigatório e deve ser maior que zero.')]];
+        return [Meta::TOTAL_RESOURCE => [i::__('O campo «Valor total do edital» é obrigatório e deve ser maior que zero.')]];
     }
 
     private function proponentTypeErrors($opportunity)
@@ -78,7 +79,7 @@ class PublicationRequirements
             return [];
         }
 
-        return [self::RULES_FILE => [i::__('O campo "Adicionar regulamento" é obrigatório.')]];
+        return [self::RULES_FILE => [i::__('O campo «Adicionar regulamento» é obrigatório.')]];
     }
 
     private function descriptionErrors($opportunity)
@@ -89,7 +90,7 @@ class PublicationRequirements
             return [];
         }
 
-        return ['shortDescription' => [i::__('O campo "Descrição curta" é obrigatório.')]];
+        return ['shortDescription' => [i::__('O campo «Descrição curta» é obrigatório.')]];
     }
 
     private function registrationDateErrors($opportunity)
@@ -97,11 +98,40 @@ class PublicationRequirements
         $errors = [];
 
         if (!$opportunity->registrationFrom) {
-            $errors['registrationFrom'] = [i::__('O campo "Data inicial das inscrições" é obrigatório.')];
+            $errors['registrationFrom'] = [i::__('O campo «Data inicial das inscrições» é obrigatório.')];
         }
 
         if (!$opportunity->registrationTo) {
-            $errors['registrationTo'] = [i::__('O campo "Data final das inscrições" é obrigatório.')];
+            $errors['registrationTo'] = [i::__('O campo «Data final das inscrições» é obrigatório.')];
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Os quatro ids do PAR são obrigatórios e vêm juntos: a seleção parcial não publica e cada nível
+     * faltante é nomeado. A consistência da cadeia (exercício → meta → ação → atividade) fica para a #52.
+     */
+    private function parErrors($opportunity)
+    {
+        // sem aspas e com o artigo e o gênero do nome: a mensagem vai para um atributo title no front, e aspas o cortariam
+        $subjects = [
+            Meta::PAR_EXERCISE_ID => [i::__('O Exercício do PAR'), i::__('é obrigatório.')],
+            Meta::PAR_GOAL_ID => [i::__('A Meta do PAR'), i::__('é obrigatória.')],
+            Meta::PAR_ACTION_ID => [i::__('A Ação do PAR'), i::__('é obrigatória.')],
+            Meta::PAR_ACTIVITY_ID => [i::__('A Atividade do PAR'), i::__('é obrigatória.')],
+        ];
+        $errors = [];
+
+        foreach (Meta::PAR_KEYS as $key) {
+            $value = trim((string) $opportunity->$key);
+            [$subject, $required] = $subjects[$key];
+
+            if ($value === '') {
+                $errors[$key] = [$subject . ' ' . $required];
+            } elseif (Meta::parIdOf($value) === null) {
+                $errors[$key] = [sprintf(i::__('%s não guarda um id do PAR: refaça a seleção.'), $subject)];
+            }
         }
 
         return $errors;
@@ -132,7 +162,7 @@ class PublicationRequirements
             return [];
         }
 
-        return [$key => [sprintf(i::__('A opção "%s" de "%s" não pode ser combinada com outras opções.'), TargetingOption::text(TargetingOption::NOT_TARGETED, TargetingField::fromMetadataKey($key)), Meta::definitions()[$key]['label'])]];
+        return [$key => [sprintf(i::__('A opção «%s» de «%s» não pode ser combinada com outras opções.'), TargetingOption::text(TargetingOption::NOT_TARGETED, TargetingField::fromMetadataKey($key)), Meta::definitions()[$key]['label'])]];
     }
 
     private function specificationErrors($opportunity)
@@ -147,7 +177,7 @@ class PublicationRequirements
         $errors = [];
 
         foreach (Meta::missingSpecifications($values) as $key) {
-            $errors[$key] = [sprintf(i::__('O campo "%s" é obrigatório quando a opção de especificar é selecionada.'), $labels[$key]['label'])];
+            $errors[$key] = [sprintf(i::__('O campo «%s» é obrigatório quando a opção de especificar é selecionada.'), $labels[$key]['label'])];
         }
 
         return $errors;
@@ -164,7 +194,7 @@ class PublicationRequirements
         }
 
         if ($answer !== self::YES) {
-            return [$key => [i::__('O campo "Houve utilização de recursos de outras fontes?" é obrigatório.')]];
+            return [$key => [i::__('O campo «Houve utilização de recursos de outras fontes?» é obrigatório.')]];
         }
 
         $others = $this->listOf($block, FundingSource::OTHER_SOURCES);
@@ -177,12 +207,12 @@ class PublicationRequirements
         }
 
         if (!$hasAmountSource && !$others) {
-            return [$key => [i::__('Em "Houve utilização de recursos de outras fontes?", selecione pelo menos uma fonte de recurso.')]];
+            return [$key => [i::__('Em «Houve utilização de recursos de outras fontes?», selecione pelo menos uma fonte de recurso.')]];
         }
 
         foreach ($others as $source) {
             if (trim((string) (isset($source['nomeFonte']) ? $source['nomeFonte'] : '')) === '') {
-                return [$key => [i::__('Em "Houve utilização de recursos de outras fontes?", preencha o nome de todas as fontes.')]];
+                return [$key => [i::__('Em «Houve utilização de recursos de outras fontes?», preencha o nome de todas as fontes.')]];
             }
         }
 
@@ -203,7 +233,7 @@ class PublicationRequirements
 
     private function quotaMessage(array $quotas, $vacancies)
     {
-        $incomplete = i::__('Em "Reserva de vagas (cotas)", configure todas as cotas ou marque como Não aplicável.');
+        $incomplete = i::__('Em «Reserva de vagas (cotas)», configure todas as cotas ou marque como Não aplicável.');
 
         if (count($quotas) < self::MINIMUM_QUOTA_COUNT) {
             return $incomplete;
@@ -228,7 +258,7 @@ class PublicationRequirements
             $amount = $this->numberOrNull(isset($quota['valorDestinado']) ? $quota['valorDestinado'] : null);
 
             if (!empty($quota['naoAplicavel']) && ($slots > 0 || $amount > 0)) {
-                return i::__('Em "Reserva de vagas (cotas)", uma cota marcada como Não aplicável deve ter número de vagas e valor destinado iguais a zero.');
+                return i::__('Em «Reserva de vagas (cotas)», uma cota marcada como Não aplicável deve ter número de vagas e valor destinado iguais a zero.');
             }
 
             if (empty($quota['naoAplicavel']) && ($slots === null || $amount === null || $slots < 0 || $amount < 0)) {
@@ -253,14 +283,14 @@ class PublicationRequirements
             }
 
             if ($slots !== null && $slots != floor($slots)) {
-                return i::__('Em "Reserva de vagas (cotas)", o número de vagas de cada cota deve ser inteiro.');
+                return i::__('Em «Reserva de vagas (cotas)», o número de vagas de cada cota deve ser inteiro.');
             }
 
             $sum += (int) $slots;
         }
 
         if ($vacancies >= 1 && $sum !== $vacancies) {
-            return sprintf(i::__('Em "Reserva de vagas (cotas)", a soma das vagas (%d) deve ser igual ao Total de vagas (%d).'), $sum, $vacancies);
+            return sprintf(i::__('Em «Reserva de vagas (cotas)», a soma das vagas (%d) deve ser igual ao Total de vagas (%d).'), $sum, $vacancies);
         }
 
         return null;
@@ -277,20 +307,20 @@ class PublicationRequirements
         }
 
         if ($answer !== self::YES) {
-            return [$key => [i::__('O campo "Formas de inscrição previstas no edital" é obrigatório.')]];
+            return [$key => [i::__('O campo «Formas de inscrição previstas no edital» é obrigatório.')]];
         }
 
         $channels = isset($block['formas']) && is_array($block['formas']) ? $block['formas'] : [];
 
         if (!$channels) {
-            return [$key => [i::__('Em "Formas de inscrição previstas no edital", selecione pelo menos uma forma.')]];
+            return [$key => [i::__('Em «Formas de inscrição previstas no edital», selecione pelo menos uma forma.')]];
         }
 
         $messages = [];
 
         foreach ($channels as $channel) {
             if (!is_array($channel)) {
-                $messages[] = i::__('Em "Formas de inscrição previstas no edital", cada forma marcada deve ter tipo e descrição.');
+                $messages[] = i::__('Em «Formas de inscrição previstas no edital», cada forma marcada deve ter tipo e descrição.');
                 continue;
             }
 
@@ -298,15 +328,15 @@ class PublicationRequirements
             $description = trim((string) (isset($channel['descricao']) ? $channel['descricao'] : ''));
 
             if ($type === '') {
-                $messages[] = i::__('Em "Formas de inscrição previstas no edital", escolha o tipo de cada forma marcada.');
+                $messages[] = i::__('Em «Formas de inscrição previstas no edital», escolha o tipo de cada forma marcada.');
             } elseif (RegistrationChannel::tryFrom($type) === null) {
-                $messages[] = sprintf(i::__('A forma de inscrição "%s" não tem correspondente no CultBR.'), $type);
+                $messages[] = sprintf(i::__('A forma de inscrição «%s» não tem correspondente no CultBR.'), $type);
             }
 
             if ($description === '') {
-                $messages[] = i::__('Em "Formas de inscrição previstas no edital", preencha a descrição de cada forma marcada.');
+                $messages[] = i::__('Em «Formas de inscrição previstas no edital», preencha a descrição de cada forma marcada.');
             } elseif ($type === RegistrationChannel::EMAIL && !Validator::email()->validate($description)) {
-                $messages[] = i::__('Em "Formas de inscrição previstas no edital", informe um e-mail válido.');
+                $messages[] = i::__('Em «Formas de inscrição previstas no edital», informe um e-mail válido.');
             }
         }
 
@@ -318,7 +348,7 @@ class PublicationRequirements
         $key = Meta::AFFIRMATIVE_ACTIONS;
         $block = $this->block($opportunity->$key);
         $options = $this->strings(isset($block['opcoes']) ? $block['opcoes'] : []);
-        $title = 'Em "Outras modalidades de ações afirmativas", ';
+        $title = 'Em «Outras modalidades de ações afirmativas», ';
         $messages = [];
 
         $known = array_filter($options, function ($option) {
@@ -330,12 +360,12 @@ class PublicationRequirements
         }
 
         if (count(array_unique($options)) > 1 && array_filter($options, [AffirmativeAction::class, 'isExclusive'])) {
-            $messages[] = i::__($title . 'a opção "Não são previstas outras ações afirmativas" não pode ser combinada com outras opções.');
+            $messages[] = i::__($title . 'a opção «Não são previstas outras ações afirmativas» não pode ser combinada com outras opções.');
         }
 
         foreach ($options as $option) {
             if (AffirmativeAction::tryFrom($option) === null) {
-                $messages[] = sprintf(i::__('A ação afirmativa "%s" não tem correspondente no CultBR.'), $option);
+                $messages[] = sprintf(i::__('A ação afirmativa «%s» não tem correspondente no CultBR.'), $option);
             }
         }
 
@@ -361,12 +391,12 @@ class PublicationRequirements
         $messages = [];
 
         if (!$valid) {
-            $messages[] = sprintf(i::__('Em "Outras modalidades de ações afirmativas", selecione pelo menos uma subcategoria de "%s".'), AffirmativeAction::text($option));
+            $messages[] = sprintf(i::__('Em «Outras modalidades de ações afirmativas», selecione pelo menos uma subcategoria de «%s».'), AffirmativeAction::text($option));
         }
 
         foreach ($groups as $group) {
             if (AffirmativeActionGroup::tryFrom($group) === null) {
-                $messages[] = sprintf(i::__('O grupo "%s" de "%s" não tem correspondente no CultBR.'), $group, AffirmativeAction::text($option));
+                $messages[] = sprintf(i::__('O grupo «%s» de «%s» não tem correspondente no CultBR.'), $group, AffirmativeAction::text($option));
             }
         }
 
@@ -383,7 +413,7 @@ class PublicationRequirements
         }
 
         if (mb_strlen($description) > $max) {
-            return [sprintf(i::__('Em "Outras modalidades de ações afirmativas", a descrição da outra ação afirmativa deve ter no máximo %d caracteres.'), $max)];
+            return [sprintf(i::__('Em «Outras modalidades de ações afirmativas», a descrição da outra ação afirmativa deve ter no máximo %d caracteres.'), $max)];
         }
 
         return [];
@@ -400,12 +430,12 @@ class PublicationRequirements
         });
 
         if (!$known) {
-            $messages[] = sprintf(i::__('O campo "%s" é obrigatório.'), $label);
+            $messages[] = sprintf(i::__('O campo «%s» é obrigatório.'), $label);
         }
 
         foreach ($values as $value) {
             if (!array_key_exists($value, $definition['options'])) {
-                $messages[] = sprintf(i::__('A opção "%s" de "%s" não tem correspondente no CultBR.'), $value, $label);
+                $messages[] = sprintf(i::__('A opção «%s» de «%s» não tem correspondente no CultBR.'), $value, $label);
             }
         }
 

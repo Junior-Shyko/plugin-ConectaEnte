@@ -37,6 +37,12 @@ class Config
         return (string) self::get('retry_delay', '+15 seconds');
     }
 
+    // validade, em segundos, da árvore do PAR no cache por ente (CONECTAENTE_PAR_TTL); mínimo de um minuto
+    public static function parTtl()
+    {
+        return max(60, (int) self::get('par_ttl', 3600));
+    }
+
     public static function get($key, $default = null)
     {
         $app = App::i();

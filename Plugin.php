@@ -2,11 +2,16 @@
 
 namespace ConectaEnte;
 
+use ConectaEnte\Entities\FederativeEntity;
+use ConectaEnte\Http\Client;
+use ConectaEnte\Jobs\ParInformationFetchJob;
+use ConectaEnte\Jobs\ParInformationSyncJob;
 use ConectaEnte\Jobs\SendOpportunityJob;
 use ConectaEnte\Metadata\CultBrMetadata;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
+use ConectaEnte\Services\ParInformationService;
 use ConectaEnte\Services\PublicationRequirements;
 use ConectaEnte\Services\PublicationStamp;
 use ConectaEnte\Services\SendEligibility;
@@ -30,6 +35,7 @@ class Plugin extends \MapasCulturais\Plugin
         $this->hookPublicationRequirements($app);
         $this->hookPublicationStamp($app);
         $this->hookSendOpportunity($app);
+        $this->hookParInformation($app);
 
         $app->log->debug('[ConectaEnte] _init() mode=' . Config::mode());
 
@@ -185,6 +191,81 @@ class Plugin extends \MapasCulturais\Plugin
         });
     }
 
+    private function hookParInformation(App $app)
+    {
+        $app->registerJobType(new ParInformationFetchJob(ParInformationFetchJob::SLUG));
+        $app->registerJobType(new ParInformationSyncJob(ParInformationSyncJob::SLUG));
+    }
+
+    public static function parInformationService()
+    {
+        $app = App::i();
+        $identity = Config::mode() . '|' . Config::host();
+
+        return new ParInformationService(Client::fromConfig(), $app->mscache, Config::parTtl(), $identity, function ($message) use ($app) {
+            $app->log->warning('[ConectaEnte] ' . $message);
+        });
+    }
+
+    /**
+     * Cadastro com token novo ou reverificado: descarta a árvore antiga, busca a nova agora e garante a
+     * sincronização periódica (sem adiar a que já existe). Falha de agendamento é logada e não derruba o cadastro.
+     */
+    public static function scheduleParInformation(FederativeEntity $entity)
+    {
+        try {
+            self::parInformationService()->forget($entity);
+        } catch (\Throwable $e) {
+            App::i()->log->error("[ConectaEnte] could not forget the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
+        }
+
+        self::requestParFetch($entity, true);
+        self::ensureParSync();
+    }
+
+    /**
+     * Enfileira a busca de um ente, sem esperar pela API. Sem `$force`, no máximo uma por minuto por ente:
+     * a tela pode ser recarregada várias vezes enquanto a API está fora.
+     */
+    public static function requestParFetch(FederativeEntity $entity, $force = false)
+    {
+        $app = App::i();
+        $flag = 'conectaente:par-fetch-requested:' . $entity->getId();
+
+        if (!$force && $app->mscache->contains($flag)) {
+            return;
+        }
+
+        try {
+            $app->enqueueJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), 'now', '', 1);
+            $app->mscache->save($flag, true, 60);
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] could not queue the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Garante uma única sincronização periódica. O flag dura um TTL, a mesma cadência do job: instalações
+     * que já tinham entes ganham o job na primeira consulta da tela, sem reagendar a cada requisição.
+     */
+    public static function ensureParSync()
+    {
+        $app = App::i();
+        $flag = 'conectaente:par-sync-scheduled';
+
+        if ($app->mscache->contains($flag)) {
+            return;
+        }
+
+        try {
+            $ttl = Config::parTtl();
+            $app->enqueueOrReplaceJob(ParInformationSyncJob::SLUG, [], "+{$ttl} seconds", "+{$ttl} seconds", ParInformationSyncJob::ITERATIONS);
+            $app->mscache->save($flag, true, $ttl);
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] could not schedule the PAR sync: {$e->getMessage()}");
+        }
+    }
+
     /**
      * Enfileira o envio da raiz, se ela for elegível. Editar uma fase reenvia a raiz (decisão de #48).
      */
@@ -227,10 +308,24 @@ class Plugin extends \MapasCulturais\Plugin
             $missing = (new PublicationRequirements())->missingFields($this);
 
             if ($missing) {
+                [$status, $body] = Plugin::publicationErrorResponse($missing, $app->request->isAjax());
+
                 $app->contentType('application/json');
-                $app->halt(400, json_encode(['error' => true, 'data' => $missing]));
+                $app->halt($status, $body);
             }
         });
+    }
+
+    /**
+     * Pendências na publicação. O front (AJAX, como o editable.js) recebe 200 com `error: true`, o formato de
+     * validação do core, porque um 400 cairia no `error:` do jQuery e perderia os campos. Quem não é o front
+     * recebe 400, para que um cliente de API não confunda o bloqueio com uma publicação feita.
+     *
+     * @return array [status, corpo JSON]
+     */
+    public static function publicationErrorResponse(array $missing, $ajax)
+    {
+        return [$ajax ? 200 : 400, json_encode(['error' => true, 'data' => $missing])];
     }
 
     private function hookCultBrTab(App $app)

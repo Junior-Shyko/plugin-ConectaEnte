@@ -108,11 +108,21 @@ class OpportunityPayloadTest extends TestCase
         $this->assertSame(['valor_total_edital'], (new OpportunityPayload())->missing($payload));
     }
 
-    public function testParIdsAreNamedAsMissingUntilTheirMetadataExists()
+    public function testParIdsAreNamedAsMissingWhenEmpty()
     {
         $payload = $this->payload(['par' => ['id_exercicio' => null, 'id_meta' => null, 'id_acao' => null, 'id_atividade' => null]]);
 
         $this->assertSame(['id_exercicio', 'id_meta', 'id_acao', 'id_atividade'], (new OpportunityPayload())->missing($payload));
+    }
+
+    public function testParIdsAreReadFromThePrefixedMetadataKeys()
+    {
+        $this->assertSame([
+            'id_exercicio' => 'conectaente_parExercicioId',
+            'id_meta' => 'conectaente_parMetaId',
+            'id_acao' => 'conectaente_parAcaoId',
+            'id_atividade' => 'conectaente_parAtividadeId',
+        ], OpportunityPayload::PAR_METADATA);
     }
 
     public function testParIdsGoOutAsIntegers()
@@ -120,6 +130,16 @@ class OpportunityPayloadTest extends TestCase
         $payload = $this->payload();
 
         $this->assertSame(2026, $payload['id_exercicio']);
+        $this->assertSame(5, $payload['id_atividade']);
+    }
+
+    // o id aceito na publicação (com espaços) sai igual no payload; acima do limite do inteiro, nulo
+    public function testParIdsGoOutTrimmedAndNullWhenAboveTheIntegerLimit()
+    {
+        $payload = $this->payload(['par' => ['id_exercicio' => ' 2026 ', 'id_meta' => '9223372036854775808', 'id_acao' => '12', 'id_atividade' => ' 5']]);
+
+        $this->assertSame(2026, $payload['id_exercicio']);
+        $this->assertNull($payload['id_meta']);
         $this->assertSame(5, $payload['id_atividade']);
     }
 
