@@ -2,6 +2,8 @@
 
 namespace ConectaEnte\Dto;
 
+use ConectaEnte\Metadata\CultBrMetadata;
+
 /**
  * Trecho comum dos nós da árvore do PAR: só o `id` é obrigatório no contrato, então o nome pode faltar.
  */
@@ -13,10 +15,14 @@ trait ParNode
         return $this->name !== null && $this->name !== '' ? $this->name : 'Id ' . $this->id;
     }
 
-    /** Nó sem `id` não pode ser escolhido nem enviado: é descartado na leitura. */
+    /** Nó sem `id` válido não pode ser escolhido nem enviado: é descartado na leitura. */
     protected static function idOf(array $raw)
     {
-        return isset($raw['id']) && is_scalar($raw['id']) && (string) $raw['id'] !== '' ? (string) $raw['id'] : null;
+        if (!isset($raw['id']) || is_bool($raw['id']) || !is_scalar($raw['id'])) {
+            return null;
+        }
+
+        return CultBrMetadata::parIdOf($raw['id']);
     }
 
     protected static function nameOf(array $raw)

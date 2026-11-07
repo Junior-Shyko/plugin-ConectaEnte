@@ -133,6 +133,16 @@ class OpportunityPayloadTest extends TestCase
         $this->assertSame(5, $payload['id_atividade']);
     }
 
+    // o id aceito na publicação (com espaços) sai igual no payload; acima do limite do inteiro, nulo
+    public function testParIdsGoOutTrimmedAndNullWhenAboveTheIntegerLimit()
+    {
+        $payload = $this->payload(['par' => ['id_exercicio' => ' 2026 ', 'id_meta' => '9223372036854775808', 'id_acao' => '12', 'id_atividade' => ' 5']]);
+
+        $this->assertSame(2026, $payload['id_exercicio']);
+        $this->assertNull($payload['id_meta']);
+        $this->assertSame(5, $payload['id_atividade']);
+    }
+
     public function testParIdIsAnIntegerOnlyWhenItIsDigits()
     {
         $payload = $this->payload(['par' => ['id_exercicio' => 'abc', 'id_meta' => '', 'id_acao' => '12', 'id_atividade' => null]]);

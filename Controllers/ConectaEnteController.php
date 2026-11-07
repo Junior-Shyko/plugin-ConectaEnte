@@ -80,11 +80,12 @@ class ConectaEnteController extends \MapasCulturais\Controller
             return;
         }
 
-        $service = Plugin::parInformationService();
-        $result = $service->cached($entity);
+        $result = Plugin::parInformationService()->cached($entity);
 
-        if ($result->getState() === ParInformationResult::PENDING) {
+        // sem árvore (nunca buscada ou falha recente), a tela pede uma nova busca; o limite fica no Plugin
+        if (in_array($result->getState(), [ParInformationResult::PENDING, ParInformationResult::UNAVAILABLE], true)) {
             Plugin::requestParFetch($entity);
+            Plugin::ensureParSync();
         }
 
         $this->json($result->toArray());

@@ -34,6 +34,12 @@ class ParInformation
         return new self($cnpj, $name, self::nodes(ParExercise::class, $raw, 'exercicios'));
     }
 
+    /** Nome do ente para a tela; sem nome, o CNPJ, que identifica o ente. */
+    public function label()
+    {
+        return $this->name !== null && $this->name !== '' ? $this->name : $this->cnpj;
+    }
+
     public function toArray()
     {
         return array_map(function ($exercise) {

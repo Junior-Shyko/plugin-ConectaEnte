@@ -67,6 +67,29 @@ class ParInformationDtoTest extends TestCase
         $this->assertSame('9102', $tree->exercises[0]->goals[0]->id);
     }
 
+    // o id é conferido como o da publicação: booleano, texto fora do padrão ou acima do inteiro não entram
+    public function testAnIdThatIsNotADigitStringIsDroppedAndOneWithSpacesIsTrimmed()
+    {
+        $tree = ParInformation::fromArray($this->entity([
+            'exercicios' => [
+                ['id' => true, 'ano' => 2024, 'metas' => []],
+                ['id' => 'invalid', 'ano' => 2025, 'metas' => []],
+                ['id' => '9999999999999999999999', 'ano' => 2026, 'metas' => []],
+                ['id' => ' 9003 ', 'ano' => 2027, 'metas' => []],
+            ],
+        ]));
+
+        $this->assertCount(1, $tree->exercises);
+        $this->assertSame('9003', $tree->exercises[0]->id);
+    }
+
+    public function testATreeWithoutNameIsLabelledByItsCnpj()
+    {
+        $tree = ParInformation::fromArray($this->entity(['nome' => null]));
+
+        $this->assertSame('00000000000191', $tree->label());
+    }
+
     public function testAnItemWithoutCnpjIsNotATree()
     {
         $this->assertNull(ParInformation::fromArray(['nome' => 'sem cnpj', 'exercicios' => []]));

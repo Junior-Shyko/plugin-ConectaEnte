@@ -188,6 +188,29 @@ class CultBrMetadata
         }, self::values($value)));
     }
 
+    /**
+     * Id do PAR normalizado (sem espaços, só dígitos, cabe em inteiro PHP) ou nulo. A publicação e o payload
+     * usam esta mesma regra, para o que passou na publicação sair igual no envio.
+     */
+    public static function parIdOf($value)
+    {
+        $text = trim((string) $value);
+
+        if (!ctype_digit($text)) {
+            return null;
+        }
+
+        $digits = ltrim($text, '0');
+        $digits = $digits === '' ? '0' : $digits;
+        $max = (string) PHP_INT_MAX;
+
+        if (strlen($digits) > strlen($max) || (strlen($digits) === strlen($max) && strcmp($digits, $max) > 0)) {
+            return null;
+        }
+
+        return $digits;
+    }
+
     public static function missingSpecifications(array $values)
     {
         $missing = [];

@@ -38,9 +38,9 @@ class ParInformationResult
         return new self(self::OK, $tree, null, $simulated, $otherCnpjs);
     }
 
-    public static function notFound($message, $simulated = false)
+    public static function notFound($message, $simulated = false, array $otherCnpjs = [])
     {
-        return new self(self::NOT_FOUND, null, $message, $simulated, []);
+        return new self(self::NOT_FOUND, null, $message, $simulated, $otherCnpjs);
     }
 
     public static function unavailable($message, $simulated = false)

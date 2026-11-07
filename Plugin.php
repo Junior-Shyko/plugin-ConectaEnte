@@ -200,36 +200,70 @@ class Plugin extends \MapasCulturais\Plugin
     public static function parInformationService()
     {
         $app = App::i();
+        $identity = Config::mode() . '|' . Config::host();
 
-        return new ParInformationService(Client::fromConfig(), $app->mscache, Config::parTtl(), function ($message) use ($app) {
+        return new ParInformationService(Client::fromConfig(), $app->mscache, Config::parTtl(), $identity, function ($message) use ($app) {
             $app->log->warning('[ConectaEnte] ' . $message);
         });
     }
 
     /**
-     * Cadastro com token novo ou reverificado: descarta a árvore antiga, busca a nova agora e agenda a
-     * sincronização periódica. Falha de agendamento é logada e não derruba o cadastro.
+     * Cadastro com token novo ou reverificado: descarta a árvore antiga, busca a nova agora e garante a
+     * sincronização periódica (sem adiar a que já existe). Falha de agendamento é logada e não derruba o cadastro.
      */
     public static function scheduleParInformation(FederativeEntity $entity)
     {
-        $app = App::i();
-
         try {
             self::parInformationService()->forget($entity);
-
-            self::requestParFetch($entity);
-
-            $ttl = Config::parTtl();
-            $app->enqueueOrReplaceJob(ParInformationSyncJob::SLUG, [], "+{$ttl} seconds", "+{$ttl} seconds", ParInformationSyncJob::ITERATIONS);
         } catch (\Throwable $e) {
-            $app->log->error("[ConectaEnte] could not schedule the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
+            App::i()->log->error("[ConectaEnte] could not forget the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
+        }
+
+        self::requestParFetch($entity, true);
+        self::ensureParSync();
+    }
+
+    /**
+     * Enfileira a busca de um ente, sem esperar pela API. Sem `$force`, no máximo uma por minuto por ente:
+     * a tela pode ser recarregada várias vezes enquanto a API está fora.
+     */
+    public static function requestParFetch(FederativeEntity $entity, $force = false)
+    {
+        $app = App::i();
+        $flag = 'conectaente:par-fetch-requested:' . $entity->getId();
+
+        if (!$force && $app->mscache->contains($flag)) {
+            return;
+        }
+
+        try {
+            $app->enqueueJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), 'now', '', 1);
+            $app->mscache->save($flag, true, 60);
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] could not queue the PAR tree of federative entity {$entity->getId()}: {$e->getMessage()}");
         }
     }
 
-    /** Enfileira a busca de um ente, sem esperar pela API. */
-    public static function requestParFetch(FederativeEntity $entity)
+    /**
+     * Garante uma única sincronização periódica. O flag dura um TTL, a mesma cadência do job: instalações
+     * que já tinham entes ganham o job na primeira consulta da tela, sem reagendar a cada requisição.
+     */
+    public static function ensureParSync()
     {
-        App::i()->enqueueOrReplaceJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), 'now', '', 1);
+        $app = App::i();
+        $flag = 'conectaente:par-sync-scheduled';
+
+        if ($app->mscache->contains($flag)) {
+            return;
+        }
+
+        try {
+            $ttl = Config::parTtl();
+            $app->enqueueOrReplaceJob(ParInformationSyncJob::SLUG, [], "+{$ttl} seconds", "+{$ttl} seconds", ParInformationSyncJob::ITERATIONS);
+            $app->mscache->save($flag, true, $ttl);
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] could not schedule the PAR sync: {$e->getMessage()}");
+        }
     }
 
     /**

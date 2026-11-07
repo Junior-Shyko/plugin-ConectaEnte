@@ -122,7 +122,7 @@ class PublicationRequirements
 
             if ($value === '') {
                 $errors[$key] = [sprintf(i::__('O campo "%s" é obrigatório.'), $label)];
-            } elseif (!ctype_digit($value)) {
+            } elseif (Meta::parIdOf($value) === null) {
                 $errors[$key] = [sprintf(i::__('O campo "%s" não guarda um id do PAR: refaça a seleção.'), $label)];
             }
         }

@@ -11,7 +11,9 @@ use MapasCulturais\Entities\Job;
  * Mantém a árvore do PAR de todos os entes: enfileira uma busca por ente, espaçadas de um segundo.
  *
  * Periódico pela recorrência do core: o job é reagendado com o intervalo do TTL, até `ITERATIONS` vezes.
- * Agendado pelo cadastro do token (Plugin::scheduleParInformation); o id fixo evita duplicar.
+ * Agendado por Plugin::ensureParSync(), que não o substitui enquanto ele existir.
+ *
+ * Sempre devolve true: falha em um ente é logada e não interrompe os outros nem a recorrência.
  */
 class ParInformationSyncJob extends JobType
 {
@@ -28,10 +30,18 @@ class ParInformationSyncJob extends JobType
     {
         $app = App::i();
 
-        foreach ((new FederativeEntityRepository())->findAll() as $position => $entity) {
-            $start = '+' . ($position * self::SPACING_SECONDS) . ' seconds';
+        try {
+            foreach ((new FederativeEntityRepository())->findAll() as $position => $entity) {
+                $start = '+' . ($position * self::SPACING_SECONDS) . ' seconds';
 
-            $app->enqueueOrReplaceJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), $start, '', 1);
+                try {
+                    $app->enqueueJob(ParInformationFetchJob::SLUG, ParInformationFetchJob::dataFor($entity), $start, '', 1);
+                } catch (\Throwable $e) {
+                    $app->log->error("[ConectaEnte] sincronização do PAR não enfileirou o ente {$entity->getId()}: {$e->getMessage()}");
+                }
+            }
+        } catch (\Throwable $e) {
+            $app->log->error("[ConectaEnte] sincronização do PAR falhou: {$e->getMessage()}");
         }
 
         return true;

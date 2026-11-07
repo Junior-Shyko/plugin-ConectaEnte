@@ -83,6 +83,15 @@ class ParInformationClientTest extends TestCase
         $this->assertTrue($result->isDefinitive());
     }
 
+    public function testANotFoundKeepsTheOtherCnpjsForTheLog()
+    {
+        $transport = new SequencedTransport([$this->page([$this->entity('99999999000191', 1)])]);
+
+        $result = (new Client(self::HOST, $transport))->getParInformation('um-token', self::CNPJ);
+
+        $this->assertSame(['99999999000191'], $result->getOtherCnpjs());
+    }
+
     public function testAnUnreachableApiIsUnavailableAndNotDefinitive()
     {
         $result = (new Client(self::HOST, FakeTransport::unreachable()))->getParInformation('um-token', self::CNPJ);

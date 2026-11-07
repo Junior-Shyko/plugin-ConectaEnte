@@ -99,19 +99,26 @@ are logged, never used.
 
 - **A page request never calls the API.** `ConectaEnte\Services\ParInformationService::cached()` reads
   only the cache; with no entry it returns `pending`, and the endpoint enqueues a fetch for the entity.
-- **Cache per entity** (`conectaente:par-information:federative-entity:<id>`, `ttl` = `par_ttl`) in the
-  `mscache` provider, not `cache`: its namespace is fixed, so the jobs (which run outside a subsite) and the
-  pages read the same entry. Definitive answers are cached (a tree, or "no tree for this CNPJ"); a failed
-  call is not, so the next fetch tries again.
-- **Jobs.** `conectaente-par-fetch` (one per entity, id `conectaente-par-fetch:<id>`) fetches and caches;
-  `conectaente-par-sync` enqueues a fetch per entity, spaced by one second, and repeats through the core's
-  recurrence every `par_ttl` seconds (`ITERATIONS` times). Both always return `true`.
+- **Cache per entity** (`conectaente:par-information:<sha1>`, `ttl` = `par_ttl`) in the `mscache` provider,
+  not `cache`: its namespace is fixed, so the jobs (which run outside a subsite) and the pages read the same
+  entry. The key hashes the mode and host, the entity, its CNPJ and its token, so another environment or a
+  token that was replaced never reads an old entry. Definitive answers are cached (a tree, or "no tree for
+  this CNPJ"). A failed call is kept for 5 minutes under `:failure`, so the page shows `unavailable` and the
+  next fetch tries again.
+- **Jobs.** `conectaente-par-fetch` fetches and caches, one job per request (its id carries a unique
+  `requestId`, so a request made while another fetch runs is not dropped). `conectaente-par-sync` enqueues a
+  fetch per entity, spaced by one second, and repeats through the core's recurrence every `par_ttl` seconds
+  (`ITERATIONS` times). Both always return `true`; a failure is logged and does not stop the others.
 - **Scheduling.** Saving a token (create, or update that verifies a token, accepted) forgets the cached tree,
-  enqueues the fetch now and (re)schedules the sync. A rejected token schedules nothing.
+  enqueues the fetch now and makes sure the sync exists. A rejected token schedules nothing. The page request
+  also makes sure the sync exists, so installations that already had entities get it on the first visit. Both
+  "make sure" steps use a flag of one `par_ttl` in `mscache`, so the sync is scheduled once per period and a
+  new token does not postpone it. A page request queues at most one fetch per entity per minute.
 - **Endpoint.** `GET /conecta-ente/parInformation/<opportunityId>` answers the tree of the opportunity's
   sealed entity, from the cache, in the shape of the `v7` route: `available`, `simulated`, `reason`,
   `message` and `exercicios` (`id`, `ano`, `metas` → `acoes` → `atividades`). `reason` is `pending`,
-  `notFound` or `unavailable` when there is no tree. The UI that picks from it is #53.
+  `notFound` or `unavailable` when there is no tree; `pending` and `unavailable` also queue a fetch (rate
+  limited above). The UI that picks from it is #53.
 - **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
 
 Not verified here: the production contract still lists this path as absent (the #52 note), so it must be

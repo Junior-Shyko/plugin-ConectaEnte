@@ -19,14 +19,18 @@ class ParInformationFetchJob extends JobType
     // a coluna do slug no core tem 32 caracteres
     const SLUG = 'conectaente-par-fetch';
 
+    /**
+     * Um pedido, um job: o `requestId` torna o id único. Com id fixo, um pedido feito enquanto a busca roda
+     * seria descartado quando ela terminasse, e a árvore ficaria sem atualização.
+     */
     public static function dataFor(FederativeEntity $entity)
     {
-        return ['federativeEntityId' => $entity->getId()];
+        return ['federativeEntityId' => $entity->getId(), 'requestId' => uniqid('', true)];
     }
 
     protected function _generateId(array $data, string $start_string, string $interval_string, int $iterations)
     {
-        return 'conectaente-par-fetch:' . $data['federativeEntityId'];
+        return 'conectaente-par-fetch:' . $data['federativeEntityId'] . ':' . $data['requestId'];
     }
 
     protected function _execute(Job $job)

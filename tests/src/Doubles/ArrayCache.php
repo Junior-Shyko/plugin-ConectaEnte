@@ -9,6 +9,7 @@ class ArrayCache
 {
     public $saved = [];
     public $deleted = [];
+    public $failSaves = false;
 
     public function contains($id)
     {
@@ -22,6 +23,10 @@ class ArrayCache
 
     public function save($id, $data, $lifeTime = 0)
     {
+        if ($this->failSaves) {
+            return false;
+        }
+
         $this->saved[$id] = $data;
 
         return true;

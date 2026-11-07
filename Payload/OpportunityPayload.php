@@ -200,9 +200,9 @@ class OpportunityPayload
 
     private function parId($value)
     {
-        $text = (string) $value;
+        $id = Meta::parIdOf($value);
 
-        return ctype_digit($text) ? (int) $text : null;
+        return $id === null ? null : (int) $id;
     }
 
     private function text($value)

@@ -145,6 +145,12 @@ class PublicationRequirementsTest extends TestCase
         $this->assertSame([], $this->missing([Meta::PAR_GOAL_ID => ' 3 ']));
     }
 
+    public function testAParIdAboveTheIntegerLimitIsRejectedBeforeThePayloadTruncatesIt()
+    {
+        $this->assertArrayHasKey(Meta::PAR_GOAL_ID, $this->missing([Meta::PAR_GOAL_ID => '9223372036854775808']));
+        $this->assertSame([], $this->missing([Meta::PAR_GOAL_ID => '9223372036854775807']));
+    }
+
     public function testLongDescriptionSubstitutesShortDescription()
     {
         $this->assertSame([], $this->missing(['shortDescription' => '', 'longDescription' => 'Descrição longa']));

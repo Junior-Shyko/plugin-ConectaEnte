@@ -41,6 +41,18 @@ class CultBrMetadataTest extends TestCase
         }
     }
 
+    public function testParIdOfTrimsAndKeepsOnlyDigitsWithinTheIntegerLimit()
+    {
+        $this->assertSame('3', Meta::parIdOf(' 3 '));
+        $this->assertSame('3', Meta::parIdOf('003'));
+        $this->assertSame('9223372036854775807', Meta::parIdOf('9223372036854775807'));
+        $this->assertNull(Meta::parIdOf('9223372036854775808'));
+        $this->assertNull(Meta::parIdOf('3.5'));
+        $this->assertNull(Meta::parIdOf('-1'));
+        $this->assertNull(Meta::parIdOf(''));
+        $this->assertNull(Meta::parIdOf(null));
+    }
+
     public function testParIdsAreStringsWithTheSameKeysInTheHierarchyOrder()
     {
         $this->assertSame([

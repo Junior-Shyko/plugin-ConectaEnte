@@ -147,7 +147,7 @@ class Client
         }
 
         if ($match === null) {
-            return ParInformationResult::notFound($this->translate('A Plataforma CultBR não tem árvore do PAR para o CNPJ deste ente.'), $simulated);
+            return ParInformationResult::notFound($this->translate('A Plataforma CultBR não tem árvore do PAR para o CNPJ deste ente.'), $simulated, $others);
         }
 
         return ParInformationResult::ok($match, $simulated, $others);
