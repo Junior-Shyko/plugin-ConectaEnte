@@ -4,6 +4,9 @@ namespace ConectaEnte\Controllers;
 
 use ConectaEnte\Http\ApiResult;
 use ConectaEnte\Repositories\FederativeEntityRepository;
+use ConectaEnte\Entities\FederativeEntity;
+use ConectaEnte\Http\ParInformationResult;
+use ConectaEnte\Plugin;
 use ConectaEnte\Services\FederativeEntityService;
 use MapasCulturais\App;
 
@@ -47,7 +50,56 @@ class ConectaEnteController extends \MapasCulturais\Controller
             $user = App::i()->user;
 
             return !$user->is('guest') && $user->is('saasSuperAdmin');
+        }, null, null, function (FederativeEntity $entity) {
+            Plugin::scheduleParInformation($entity);
         });
+    }
+
+    /**
+     * Árvore do PAR da oportunidade para a tela: só o cache. Sem cache, enfileira a busca e responde `pending`.
+     */
+    public function GET_parInformation()
+    {
+        $this->requireAuthentication();
+
+        $opportunity = App::i()->repo('Opportunity')->find($this->opportunityId());
+
+        if (!$opportunity) {
+            $this->json(['available' => false, 'reason' => 'notFound', 'message' => 'Oportunidade não encontrada.', 'exercicios' => []], 404);
+
+            return;
+        }
+
+        $opportunity->checkPermission('modify');
+
+        $entity = Plugin::sealedEntity($opportunity);
+
+        if ($entity === null) {
+            $this->json(['available' => false, 'reason' => 'notFound', 'message' => 'A oportunidade não tem ente federado.', 'exercicios' => []], 404);
+
+            return;
+        }
+
+        $service = Plugin::parInformationService();
+        $result = $service->cached($entity);
+
+        if ($result->getState() === ParInformationResult::PENDING) {
+            Plugin::requestParFetch($entity);
+        }
+
+        $this->json($result->toArray());
+    }
+
+    // o id vem como argumento da rota (posicional) ou como `id` nos dados
+    private function opportunityId()
+    {
+        if (isset($this->data['id'])) {
+            return (int) $this->data['id'];
+        }
+
+        $args = $this->getUrlData();
+
+        return isset($args[0]) ? (int) $args[0] : 0;
     }
 
     private function respond(ApiResult $result)

@@ -198,6 +198,61 @@ class FederativeEntityServiceTest extends TestCase
         $this->assertSame('99999999000191', $ente->getCnpj());
     }
 
+    // a árvore do PAR depende do token: todo token aceito, novo ou reverificado, avisa quem a busca
+    public function testAnAcceptedNewTokenNotifiesTheTokenChange()
+    {
+        $ente = $this->ente(1, 'X', 10);
+        $this->repository->method('findById')->willReturn($ente);
+        $this->repository->method('save')->willReturnCallback(function ($ente) {
+            return $ente;
+        });
+        $notified = [];
+
+        $result = $this->serviceNotifying($notified)->update(1, ['token' => 'novo-token-bem-longo']);
+
+        $this->assertSame(200, $result->getStatus());
+        $this->assertSame([$ente], $notified);
+    }
+
+    public function testARejectedTokenDoesNotNotifyTheTokenChange()
+    {
+        $ente = $this->ente(1, 'X', 10);
+        $this->repository->method('findById')->willReturn($ente);
+        $this->validation = TokenValidation::reject('recusado');
+        $notified = [];
+
+        $this->serviceNotifying($notified)->update(1, ['token' => 'novo-token-bem-longo']);
+
+        $this->assertSame([], $notified);
+    }
+
+    public function testCreatingWithAnAcceptedTokenNotifiesTheTokenChange()
+    {
+        $this->repository->method('findBySealId')->willReturn(null);
+        $this->repository->method('save')->willReturnCallback(function ($ente) {
+            return $ente;
+        });
+        $notified = [];
+
+        $result = $this->serviceNotifying($notified)->create(['name' => 'Governo X', 'seal_id' => '10', 'token' => self::TOKEN]);
+
+        $this->assertSame(201, $result->getStatus());
+        $this->assertCount(1, $notified);
+    }
+
+    private function serviceNotifying(array &$notified)
+    {
+        return new FederativeEntityService($this->repository, function () {
+            return true;
+        }, function ($token) {
+            return $this->validation;
+        }, function () {
+            return $this->blankEntity();
+        }, function ($ente) use (&$notified) {
+            $notified[] = $ente;
+        });
+    }
+
     public function testUpdateKeepsTheOldTokenWhenTheNewOneIsRejected()
     {
         $ente = $this->ente(1, 'X', 10);

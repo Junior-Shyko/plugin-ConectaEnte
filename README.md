@@ -25,6 +25,7 @@ Each key is read from `$app->config['conectaente.<key>']`, then from the environ
 | `host` | `CONECTAENTE_HOST` | empty | Conecta Ente host (the contract does not declare `servers`) |
 | `max_attempts` | `CONECTAENTE_MAX_ATTEMPTS` | `3` | Attempts per send, **counting the first one** (3 = one attempt plus up to two retries); minimum 1 |
 | `retry_delay` | `CONECTAENTE_RETRY_DELAY` | `+15 seconds` | Interval between attempts (a `DateInterval` string; fixed, no backoff) |
+| `par_ttl` | `CONECTAENTE_PAR_TTL` | `3600` | Seconds the PAR tree of each entity stays in the cache; minimum 60 |
 
 > Warning: the default is **simulated**. Forgetting `CONECTAENTE_MODE=live` in production makes the
 > plugin simulate silently.
@@ -88,6 +89,34 @@ same instant can both pass the check, because each reads the database before the
 check runs in `persist()`, before the `flush` transaction opens, so a row lock would not hold, and a
 database constraint would mean changing `seal_relation`, a core table. Relations still waiting for a
 `flush` in the same request are seen.
+
+## PAR tree per federative entity (#52)
+
+The PAR tree (exercise → goal → action → activity) comes from `GET /api/v1/par-information` on CultBR, with
+the entity's token in the `token` header and pagination by `skip`/`limit`. The response is a list of
+entities (`data`), and the tree used is the one whose `cnpj` is the entity's CNPJ; the CNPJs of the others
+are logged, never used.
+
+- **A page request never calls the API.** `ConectaEnte\Services\ParInformationService::cached()` reads
+  only the cache; with no entry it returns `pending`, and the endpoint enqueues a fetch for the entity.
+- **Cache per entity** (`conectaente:par-information:federative-entity:<id>`, `ttl` = `par_ttl`) in the
+  `mscache` provider, not `cache`: its namespace is fixed, so the jobs (which run outside a subsite) and the
+  pages read the same entry. Definitive answers are cached (a tree, or "no tree for this CNPJ"); a failed
+  call is not, so the next fetch tries again.
+- **Jobs.** `conectaente-par-fetch` (one per entity, id `conectaente-par-fetch:<id>`) fetches and caches;
+  `conectaente-par-sync` enqueues a fetch per entity, spaced by one second, and repeats through the core's
+  recurrence every `par_ttl` seconds (`ITERATIONS` times). Both always return `true`.
+- **Scheduling.** Saving a token (create, or update that verifies a token, accepted) forgets the cached tree,
+  enqueues the fetch now and (re)schedules the sync. A rejected token schedules nothing.
+- **Endpoint.** `GET /conecta-ente/parInformation/<opportunityId>` answers the tree of the opportunity's
+  sealed entity, from the cache, in the shape of the `v7` route: `available`, `simulated`, `reason`,
+  `message` and `exercicios` (`id`, `ano`, `metas` → `acoes` → `atividades`). `reason` is `pending`,
+  `notFound` or `unavailable` when there is no tree. The UI that picks from it is #53.
+- **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
+
+Not verified here: the production contract still lists this path as absent (the #52 note), so it must be
+confirmed before relying on it; the core's recurrence of `conectaente-par-sync` and the route
+`parInformation` (argument and action name) need a run of the worker and the app.
 
 ## CultBR fields on the opportunity
 
