@@ -49,6 +49,20 @@ $choices = [
         <?php endif; ?>
     <?php endforeach; ?>
 
+    <?php // provisório: o id do PAR é digitado até a cascata da #53 existir ?>
+    <div id="conectaente-par" class="conectaente-par">
+        <?php foreach (Meta::PAR_KEYS as $key): ?>
+            <p>
+                <span class="label"><?= $definitions[$key]['label'] ?> *:</span>
+                <span class="js-editable"
+                      data-edit="<?= $key ?>"
+                      data-type="number"
+                      data-original-title="<?= htmlspecialchars($definitions[$key]['label'], ENT_QUOTES) ?>"
+                      data-emptytext="<?php i::esc_attr_e('Informe o id do PAR'); ?>"><?= htmlspecialchars((string) $entity->$key) ?></span>
+            </p>
+        <?php endforeach; ?>
+    </div>
+
     <p>
         <span class="label"><?= i::__('Data de publicação do edital') ?> *:</span>
         <span class="js-editable"

@@ -34,6 +34,13 @@ class CultBrMetadata
     const TOTAL_RESOURCE = 'conectaente_totalResource';
     const PROPONENT_TYPES = 'conectaente_proponentTypes';
 
+    // ids do PAR, na hierarquia exercício → meta → ação → atividade; cada atividade é um edital
+    const PAR_EXERCISE_ID = 'conectaente_parExercicioId';
+    const PAR_GOAL_ID = 'conectaente_parMetaId';
+    const PAR_ACTION_ID = 'conectaente_parAcaoId';
+    const PAR_ACTIVITY_ID = 'conectaente_parAtividadeId';
+    const PAR_KEYS = [self::PAR_EXERCISE_ID, self::PAR_GOAL_ID, self::PAR_ACTION_ID, self::PAR_ACTIVITY_ID];
+
     // data de publicação do edital (aaaa-mm-dd): vem preenchida com a data do primeiro salvamento ativo, e o gestor pode alterá-la
     const PUBLICATION_DATE = 'conectaente_publicationDate';
 
@@ -69,6 +76,10 @@ class CultBrMetadata
             self::AFFIRMATIVE_ACTIONS => 'Outras modalidades de ações afirmativas',
             self::TOTAL_RESOURCE => 'Valor total do edital (R$)',
             self::PROPONENT_TYPES => 'Tipos de proponente',
+            self::PAR_EXERCISE_ID => 'Exercício do PAR',
+            self::PAR_GOAL_ID => 'Meta do PAR',
+            self::PAR_ACTION_ID => 'Ação do PAR',
+            self::PAR_ACTIVITY_ID => 'Atividade do PAR',
         ];
     }
 
@@ -105,6 +116,11 @@ class CultBrMetadata
             'type' => 'multiselect',
             'options' => ProponentType::options(),
         ];
+
+        // o id do PAR é texto no metadado; o payload converte para inteiro e a publicação confere que são dígitos
+        foreach (self::PAR_KEYS as $key) {
+            $definitions[$key] = ['label' => self::t($labels[$key]), 'type' => 'string'];
+        }
 
         foreach (self::jsonBlocks() as $key => $sanitize) {
             $definitions[$key] = [

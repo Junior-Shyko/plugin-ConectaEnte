@@ -36,6 +36,7 @@ class PublicationRequirements
             $this->rulesFileErrors($opportunity),
             $this->descriptionErrors($opportunity),
             $this->registrationDateErrors($opportunity),
+            $this->parErrors($opportunity),
             $this->executionTypeErrors($opportunity),
             $this->targetingErrors($opportunity),
             $this->specificationErrors($opportunity),
@@ -102,6 +103,28 @@ class PublicationRequirements
 
         if (!$opportunity->registrationTo) {
             $errors['registrationTo'] = [i::__('O campo "Data final das inscrições" é obrigatório.')];
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Os quatro ids do PAR são obrigatórios e vêm juntos: a seleção parcial não publica e cada nível
+     * faltante é nomeado. A consistência da cadeia (exercício → meta → ação → atividade) fica para a #52.
+     */
+    private function parErrors($opportunity)
+    {
+        $errors = [];
+
+        foreach (Meta::PAR_KEYS as $key) {
+            $value = trim((string) $opportunity->$key);
+            $label = Meta::definitions()[$key]['label'];
+
+            if ($value === '') {
+                $errors[$key] = [sprintf(i::__('O campo "%s" é obrigatório.'), $label)];
+            } elseif (!ctype_digit($value)) {
+                $errors[$key] = [sprintf(i::__('O campo "%s" não guarda um id do PAR: refaça a seleção.'), $label)];
+            }
         }
 
         return $errors;

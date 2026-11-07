@@ -26,6 +26,10 @@ class CultBrMetadataTest extends TestCase
             'conectaente_priorityTerritories',
             'conectaente_totalResource',
             'conectaente_proponentTypes',
+            'conectaente_parExercicioId',
+            'conectaente_parMetaId',
+            'conectaente_parAcaoId',
+            'conectaente_parAtividadeId',
             'conectaente_fundingSources',
             'conectaente_quotaReservation',
             'conectaente_registrationChannels',
@@ -34,6 +38,20 @@ class CultBrMetadataTest extends TestCase
 
         foreach (Meta::keys() as $key) {
             $this->assertStringStartsWith(Meta::PREFIX, $key);
+        }
+    }
+
+    public function testParIdsAreStringsWithTheSameKeysInTheHierarchyOrder()
+    {
+        $this->assertSame([
+            'conectaente_parExercicioId',
+            'conectaente_parMetaId',
+            'conectaente_parAcaoId',
+            'conectaente_parAtividadeId',
+        ], Meta::PAR_KEYS);
+
+        foreach (Meta::PAR_KEYS as $key) {
+            $this->assertSame('string', Meta::definitions()[$key]['type'], $key);
         }
     }
 

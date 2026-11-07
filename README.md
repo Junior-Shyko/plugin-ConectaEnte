@@ -100,6 +100,11 @@ registration order does not matter):
 | `conectaente_executionType` | select | `ExecutionType` |
 | `conectaente_segments`, `conectaente_culturalStages`, `conectaente_thematicAgendas`, `conectaente_priorityTerritories` | multiselect | `Segment`, `CulturalStage`, `ThematicAgenda`, `PriorityTerritory` |
 | `conectaente_segmentsOther`, `conectaente_culturalStagesOther`, `conectaente_thematicAgendasOther` | string | the "specify" detail of the "Other" option |
+| `conectaente_parExercicioId`, `conectaente_parMetaId`, `conectaente_parAcaoId`, `conectaente_parAtividadeId` | string | the PAR ids (digits only), the hierarchy exercise → goal → action → activity; all four are required to publish (`PublicationRequirements::parErrors()`) and go out as integers in `id_exercicio`, `id_meta`, `id_acao`, `id_atividade` |
+
+The four PAR ids are typed in the tab by hand for now (`type: number` in the editable field); the cascade
+that picks them from the PAR tree comes with #53. Only the chain order and presence are checked; checking
+that the four ids form a valid path of the tree is #52.
 
 Keys, labels and options follow the plugin's `develop` branch (v7), so the stored data is the same in both
 versions. Each multiselect starts with the synthetic options `TargetingOption::NOT_TARGETED`
