@@ -308,7 +308,7 @@ class Plugin extends \MapasCulturais\Plugin
             $missing = (new PublicationRequirements())->missingFields($this);
 
             if ($missing) {
-                [$status, $body] = Plugin::publicationErrorResponse($missing);
+                [$status, $body] = Plugin::publicationErrorResponse($missing, $app->request->isAjax());
 
                 $app->contentType('application/json');
                 $app->halt($status, $body);
@@ -317,14 +317,15 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
-     * Pendências na publicação respondem 200 com `error: true`, como as validações do core (errorJson). Um 400
-     * cai no `error:` do editable.js, que mostra só "Um erro inesperado aconteceu" e descarta os campos.
+     * Pendências na publicação. O front (AJAX, como o editable.js) recebe 200 com `error: true`, o formato de
+     * validação do core, porque um 400 cairia no `error:` do jQuery e perderia os campos. Quem não é o front
+     * recebe 400, para que um cliente de API não confunda o bloqueio com uma publicação feita.
      *
      * @return array [status, corpo JSON]
      */
-    public static function publicationErrorResponse(array $missing)
+    public static function publicationErrorResponse(array $missing, $ajax)
     {
-        return [200, json_encode(['error' => true, 'data' => $missing])];
+        return [$ajax ? 200 : 400, json_encode(['error' => true, 'data' => $missing])];
     }
 
     private function hookCultBrTab(App $app)
