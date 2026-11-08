@@ -19,6 +19,14 @@ class SendOutcome extends AbstractVocabulary
     // o CultBR recusou com 4xx: a resposta é definitiva e não é retentada
     const REJECTED = 'rejected';
 
+    /**
+     * Desfechos que encerram um envio. `pending` não está: é o que se encerra.
+     */
+    public static function finals()
+    {
+        return [self::SUCCESS, self::ERROR, self::SIMULATED, self::ABANDONED, self::REJECTED];
+    }
+
     protected static function texts()
     {
         return [

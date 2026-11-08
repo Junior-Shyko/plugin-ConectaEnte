@@ -11,6 +11,7 @@ class SendResult
     private $status;
     private $transportError;
     private $requestId;
+    private $exchange;
 
     private function __construct($accepted, $unreachable, array $response = null, $message = null, $status = 0, $transportError = null, $requestId = null)
     {
@@ -36,6 +37,19 @@ class SendResult
     public static function unreachable($status = 0, $transportError = null)
     {
         return new self(false, true, null, null, $status, $transportError);
+    }
+
+    public function withExchange(Exchange $exchange)
+    {
+        $copy = clone $this;
+        $copy->exchange = $exchange;
+
+        return $copy;
+    }
+
+    public function getExchange()
+    {
+        return $this->exchange;
     }
 
     public function isAccepted()

@@ -10,6 +10,8 @@ use ConectaEnte\Services\OpportunitySender;
 use ConectaEnte\Services\SendEligibility;
 use ConectaEnte\Http\Client;
 use ConectaEnte\Payload\OpportunityPayload;
+use ConectaEnte\Services\ParEditalOwnership;
+use ConectaEnte\Services\SendLogService;
 use ConectaEnte\Services\SendReport;
 use ConectaEnte\Vocabulary\SendOutcome;
 use DateTime;
@@ -41,6 +43,9 @@ class SendOpportunityJob extends JobType
     {
         $app = App::i();
         $attempt = (int) $job->iterationsCount + 1;
+        $maxAttempts = Config::maxAttempts();
+        $logs = self::sendLogs();
+        $uuid = null;
 
         try {
             $opportunity = $app->repo('Opportunity')->find((int) $job->opportunityId);
@@ -50,8 +55,13 @@ class SendOpportunityJob extends JobType
                 return $this->finish($job, SendOutcome::ABANDONED);
             }
 
+            $uuid = $this->requestUuid($job);
+            $logs->startOrResume($uuid, $opportunity->id, $job->userId);
+
             $sender = new OpportunitySender(Client::fromConfig(), new OpportunityPayload(), new SendEligibility(new FederativeEntityRepository(), null, [Plugin::class, 'cachedParTree']), Config::isLive());
             $report = $sender->send($opportunity, $entity, $attempt, Config::maxAttempts());
+
+            $logs->recordAttempt($uuid, $attempt, $maxAttempts, $report);
 
             if ($report->getOutcome() === SendOutcome::PENDING) {
                 // o core soma o intervalo a partir de nextExecutionTimestamp: "agora" faz a retentativa cair em +15s
@@ -61,14 +71,42 @@ class SendOpportunityJob extends JobType
                 return true;
             }
 
+            $logs->finish($uuid, $report->getOutcome());
             $this->recordCorrelation($opportunity, $report);
 
             return $this->finish($job, $report->getOutcome(), $report->getMessage());
         } catch (\Throwable $e) {
             $app->log->error("[ConectaEnte] envio da oportunidade {$job->opportunityId} falhou: {$e->getMessage()}");
 
+            if ($uuid !== null) {
+                $logs->recordAttempt($uuid, $attempt, $maxAttempts, new SendReport(SendOutcome::ERROR, $e->getMessage()));
+                $logs->finish($uuid, SendOutcome::ERROR);
+            }
+
             return $this->finish($job, SendOutcome::ERROR);
         }
+    }
+
+    public static function sendLogs()
+    {
+        $app = App::i();
+
+        return new SendLogService($app->em->getConnection(), function ($message) use ($app) {
+            $app->log->error($message);
+        });
+    }
+
+    /**
+     * O UUID nasce na 1ª tentativa e fica no `metadata` do job: as retentativas caem no mesmo envio.
+     * O core grava o job de novo ao reagendá-lo, e é nessa gravação que o UUID persiste.
+     */
+    private function requestUuid(Job $job)
+    {
+        if (!$job->requestUuid) {
+            $job->requestUuid = SendLogService::newUuid();
+        }
+
+        return $job->requestUuid;
     }
 
     /**
@@ -83,6 +121,15 @@ class SendOpportunityJob extends JobType
 
         try {
             if ($report->getParEditalId() !== null) {
+                $owner = (new ParEditalOwnership(App::i()->em->getConnection()))->otherOwner($report->getParEditalId(), $opportunity->id);
+
+                // o índice único do banco recusaria a gravação: aqui vira um erro legível no log
+                if ($owner !== null) {
+                    App::i()->log->error("[ConectaEnte] o id_par_edital {$report->getParEditalId()} já pertence à oportunidade {$owner}; a oportunidade {$opportunity->id} não o recebe (request_id: {$report->getRequestId()})");
+
+                    return;
+                }
+
                 $opportunity->setMetadata(CultBrMetadata::PAR_EDITAL_ID, $report->getParEditalId());
             }
 
