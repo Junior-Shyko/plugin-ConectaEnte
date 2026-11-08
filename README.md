@@ -118,7 +118,12 @@ are logged, never used.
   sealed entity, from the cache, in the shape of the `v7` route: `available`, `simulated`, `reason`,
   `message` and `exercicios` (`id`, `ano`, `metas` → `acoes` → `atividades`). `reason` is `pending`,
   `notFound` or `unavailable` when there is no tree; `pending` and `unavailable` also queue a fetch (rate
-  limited above). The UI that picks from it is #53.
+  limited above). The edition tab reads it through `assets/js/conecta-ente/par-cascade.js` (AngularJS directive
+  `conecta-ente-par`): four selects in cascade, the four ids written together (a partial choice writes blanks),
+  and a «Atualizar» button when there is no tree.
+- **Publication chain.** On publish, with a tree in the cache, the chosen exercise → goal → action → activity must
+  be a path of that tree (`PublicationRequirements::parChainErrors()`); the first broken level is named. Without
+  a cached tree the chain is not checked. The send path (`SendEligibility`) does not check the chain.
 - **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
 
 Not verified here: the production contract still lists this path as absent (the #52 note), so it must be
@@ -138,9 +143,9 @@ registration order does not matter):
 | `conectaente_segmentsOther`, `conectaente_culturalStagesOther`, `conectaente_thematicAgendasOther` | string | the "specify" detail of the "Other" option |
 | `conectaente_parExercicioId`, `conectaente_parMetaId`, `conectaente_parAcaoId`, `conectaente_parAtividadeId` | string | the PAR ids (digits only), the hierarchy exercise → goal → action → activity; all four are required to publish (`PublicationRequirements::parErrors()`) and go out as integers in `id_exercicio`, `id_meta`, `id_acao`, `id_atividade` |
 
-The four PAR ids are typed in the tab by hand for now (`type: number` in the editable field); the cascade
-that picks them from the PAR tree comes with #53. Only the chain order and presence are checked; checking
-that the four ids form a valid path of the tree is #52.
+The four PAR ids are picked in cascade from the PAR tree in the tab (`conecta-ente-par` directive, see the
+section above). They are required to publish, and when the tree is cached the publication also checks that
+the four ids form a valid path of it. Without a cached tree only presence and format are checked.
 
 Keys, labels and options follow the plugin's `develop` branch (v7), so the stored data is the same in both
 versions. Each multiselect starts with the synthetic options `TargetingOption::NOT_TARGETED`

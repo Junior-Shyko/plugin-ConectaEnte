@@ -4,6 +4,7 @@ namespace ConectaEnte;
 
 use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Http\Client;
+use ConectaEnte\Http\ParInformationResult;
 use ConectaEnte\Jobs\ParInformationFetchJob;
 use ConectaEnte\Jobs\ParInformationSyncJob;
 use ConectaEnte\Jobs\SendOpportunityJob;
@@ -279,7 +280,7 @@ class Plugin extends \MapasCulturais\Plugin
 
         // roda depois do flush: uma exceção aqui não pode virar 500 para uma oportunidade já salva
         try {
-            $eligibility = (new SendEligibility(new FederativeEntityRepository()))->check($root);
+            $eligibility = (new SendEligibility(new FederativeEntityRepository(), null, [self::class, 'cachedParTree']))->check($root);
 
             if (!$eligibility->isEligible()) {
                 return;
@@ -301,11 +302,13 @@ class Plugin extends \MapasCulturais\Plugin
     {
         // roda antes do flush: parar aqui não fecha o EntityManager, e a entidade já está com o que o PUT enviou
         $app->hook('entity(Opportunity).publish:before', function () use ($app) {
-            if ($this->parent !== null || Plugin::sealedEntity($this) === null) {
+            $entity = $this->parent === null ? Plugin::sealedEntity($this) : null;
+
+            if ($entity === null) {
                 return;
             }
 
-            $missing = (new PublicationRequirements())->missingFields($this);
+            $missing = (new PublicationRequirements())->missingFields($this, Plugin::cachedParTree($entity));
 
             if ($missing) {
                 [$status, $body] = Plugin::publicationErrorResponse($missing, $app->request->isAjax());
@@ -314,6 +317,17 @@ class Plugin extends \MapasCulturais\Plugin
                 $app->halt($status, $body);
             }
         });
+    }
+
+    /**
+     * A árvore do PAR do ente, só se estiver no cache. A publicação nunca chama a API: sem árvore, a cadeia
+     * não é checada, e a tela já mostra o aviso e o botão de atualizar.
+     */
+    public static function cachedParTree(FederativeEntity $entity)
+    {
+        $result = self::parInformationService()->cached($entity);
+
+        return $result->getState() === ParInformationResult::OK ? $result->getTree() : null;
     }
 
     /**
@@ -340,6 +354,7 @@ class Plugin extends \MapasCulturais\Plugin
 
             $app->view->enqueueStyle('app', 'conectaente-opportunity-blocks', 'css/conecta-ente/opportunity-blocks.css');
             $app->view->enqueueScript('app', 'conectaente-opportunity-blocks', 'js/conecta-ente/opportunity-blocks.js', ['mapasculturais']);
+            $app->view->enqueueScript('app', 'conectaente-par-cascade', 'js/conecta-ente/par-cascade.js', ['entity.module.opportunity']);
         });
 
         $app->hook('template(opportunity.edit.tabs):end', function () {

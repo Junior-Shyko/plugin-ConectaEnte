@@ -2,6 +2,7 @@
 
 namespace ConectaEnte\Services;
 
+use ConectaEnte\Dto\ParInformation;
 use ConectaEnte\Metadata\CultBrMetadata as Meta;
 use ConectaEnte\Vocabulary\AffirmativeAction;
 use ConectaEnte\Vocabulary\AffirmativeActionGroup;
@@ -23,11 +24,12 @@ class PublicationRequirements
     const RULES_FILE = 'rules';
 
     /**
-     * @param object $opportunity oportunidade (ou objeto equivalente) com os campos lidos abaixo
+     * @param object              $opportunity oportunidade (ou objeto equivalente) com os campos lidos abaixo
+     * @param ParInformation|null $tree        árvore do PAR do ente, do cache; nulo quando não há, e então a cadeia não é checada
      *
      * @return array[] chave do campo → mensagens em PT-BR; vazio quando pode publicar
      */
-    public function missingFields($opportunity)
+    public function missingFields($opportunity, ParInformation $tree = null)
     {
         return array_merge(
             $this->vacanciesErrors($opportunity),
@@ -37,6 +39,7 @@ class PublicationRequirements
             $this->descriptionErrors($opportunity),
             $this->registrationDateErrors($opportunity),
             $this->parErrors($opportunity),
+            $this->parChainErrors($opportunity, $tree),
             $this->executionTypeErrors($opportunity),
             $this->targetingErrors($opportunity),
             $this->specificationErrors($opportunity),
@@ -110,7 +113,7 @@ class PublicationRequirements
 
     /**
      * Os quatro ids do PAR são obrigatórios e vêm juntos: a seleção parcial não publica e cada nível
-     * faltante é nomeado. A consistência da cadeia (exercício → meta → ação → atividade) fica para a #52.
+     * faltante é nomeado.
      */
     private function parErrors($opportunity)
     {
@@ -135,6 +138,65 @@ class PublicationRequirements
         }
 
         return $errors;
+    }
+
+    /**
+     * A cadeia escolhida (exercício → meta → ação → atividade) tem de existir na árvore do ente. Para no primeiro
+     * nível que quebra, porque os de baixo não têm onde se apoiar. Sem árvore, ou com algum id inválido (já
+     * recusado por parErrors), não há o que comparar.
+     */
+    private function parChainErrors($opportunity, $tree)
+    {
+        if ($tree === null) {
+            return [];
+        }
+
+        $ids = [];
+
+        foreach (Meta::PAR_KEYS as $key) {
+            $id = Meta::parIdOf($opportunity->$key);
+
+            if ($id === null) {
+                return [];
+            }
+
+            $ids[$key] = $id;
+        }
+
+        $exercise = $this->nodeWithId($tree->exercises, $ids[Meta::PAR_EXERCISE_ID]);
+
+        if ($exercise === null) {
+            return [Meta::PAR_EXERCISE_ID => [i::__('O Exercício do PAR não existe na árvore do ente: refaça a seleção.')]];
+        }
+
+        $goal = $this->nodeWithId($exercise->goals, $ids[Meta::PAR_GOAL_ID]);
+
+        if ($goal === null) {
+            return [Meta::PAR_GOAL_ID => [i::__('A Meta do PAR não pertence ao Exercício escolhido: refaça a seleção.')]];
+        }
+
+        $action = $this->nodeWithId($goal->actions, $ids[Meta::PAR_ACTION_ID]);
+
+        if ($action === null) {
+            return [Meta::PAR_ACTION_ID => [i::__('A Ação do PAR não pertence à Meta escolhida: refaça a seleção.')]];
+        }
+
+        if ($this->nodeWithId($action->activities, $ids[Meta::PAR_ACTIVITY_ID]) === null) {
+            return [Meta::PAR_ACTIVITY_ID => [i::__('A Atividade do PAR não pertence à Ação escolhida: refaça a seleção.')]];
+        }
+
+        return [];
+    }
+
+    private function nodeWithId(array $nodes, $id)
+    {
+        foreach ($nodes as $node) {
+            if ($node->id === $id) {
+                return $node;
+            }
+        }
+
+        return null;
     }
 
     private function executionTypeErrors($opportunity)
