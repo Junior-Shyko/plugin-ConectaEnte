@@ -2,6 +2,7 @@
 
 namespace Tests\ConectaEnte;
 
+use ConectaEnte\Dto\ParInformation;
 use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\EligibilityResult;
@@ -106,6 +107,23 @@ class SendEligibilityTest extends TestCase
         $eligibility->check($this->sealed(10));
 
         $this->assertSame($this->entity, $received);
+    }
+
+    public function testTheCachedParTreeOfTheEntityReachesTheMissingFieldsCheck()
+    {
+        $tree = ParInformation::fromArray(['cnpj' => '00000000000191', 'exercicios' => []]);
+        $received = 'nao chamado';
+        $eligibility = new SendEligibility($this->repository, function ($opportunity, $entity, $treeArg) use (&$received) {
+            $received = $treeArg;
+
+            return [];
+        }, function ($entity) use ($tree) {
+            return $this->entity === $entity ? $tree : null;
+        });
+
+        $eligibility->check($this->sealed(10));
+
+        $this->assertSame($tree, $received);
     }
 
     private function eligibility(array $missing = [])

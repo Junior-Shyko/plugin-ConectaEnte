@@ -280,7 +280,7 @@ class Plugin extends \MapasCulturais\Plugin
 
         // roda depois do flush: uma exceção aqui não pode virar 500 para uma oportunidade já salva
         try {
-            $eligibility = (new SendEligibility(new FederativeEntityRepository()))->check($root);
+            $eligibility = (new SendEligibility(new FederativeEntityRepository(), null, [self::class, 'cachedParTree']))->check($root);
 
             if (!$eligibility->isEligible()) {
                 return;

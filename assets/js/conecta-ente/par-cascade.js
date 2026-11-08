@@ -9,9 +9,18 @@
         {children: 'atividades'}
     ];
 
+    // mesma regra do servidor (CultBrMetadata::parIdOf): só dígitos, sem zeros à esquerda
+    function canonicalId(value) {
+        var text = String(value === null || value === undefined ? '' : value).trim();
+
+        return /^\d+$/.test(text) ? text.replace(/^0+(?=\d)/, '') : text;
+    }
+
     function findNode(list, id) {
+        var wanted = canonicalId(id);
+
         for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === String(id)) {
+            if (canonicalId(list[i].id) === wanted) {
                 return list[i];
             }
         }
@@ -50,8 +59,8 @@
                 '<p class="conectaente-par__warning" ng-if="warning">{{ warning }}</p>',
                 '<p class="conectaente-par__empty" ng-if="state === \'ok\' && !options[0].length">{{ texts.noOptions }}</p>',
                 '<p ng-repeat="level in levels">',
-                '  <span class="label">{{ level.label }} *:</span>',
-                '  <select ng-model="sel[level.index]" ng-change="change(level.index)" ng-disabled="!canChoose(level.index)"',
+                '  <label class="label" for="{{ level.inputId }}">{{ level.label }} *:</label>',
+                '  <select id="{{ level.inputId }}" ng-model="sel[level.index]" ng-change="change(level.index)" ng-disabled="!canChoose(level.index)"',
                 '          ng-options="o.id as o.label for o in options[level.index]">',
                 '    <option value="">{{ texts.select }}</option>',
                 '  </select>',
@@ -68,7 +77,7 @@
 
                 $scope.texts = config.texts;
                 $scope.levels = config.levels.map(function (level, index) {
-                    return {index: index, label: level.label};
+                    return {index: index, label: level.label, inputId: 'conecta-ente-par-' + index};
                 });
                 $scope.state = 'loading';
                 $scope.message = config.texts.loading;
@@ -115,8 +124,9 @@
 
                 // grava os quatro só quando a cadeia está completa; senão, os quatro ficam vazios
                 function persist() {
+                    // o option vazio do select entrega null, e a seleção incompleta é qualquer valor vazio
                     var complete = $scope.sel.every(function (id) {
-                        return id !== '';
+                        return !!id;
                     });
 
                     keys.forEach(function (key, index) {
@@ -132,7 +142,7 @@
                     $scope.warning = '';
 
                     for (var index = 0; index < LEVELS.length; index++) {
-                        var stored = storedValue(keys[index]);
+                        var stored = canonicalId(storedValue(keys[index]));
 
                         if (stored === '') {
                             break;
@@ -186,7 +196,7 @@
                 };
 
                 $scope.canChoose = function (index) {
-                    return $scope.state === 'ok' && (index === 0 || $scope.sel[index - 1] !== '');
+                    return $scope.state === 'ok' && (index === 0 || !!$scope.sel[index - 1]);
                 };
 
                 $scope.change = function (index) {

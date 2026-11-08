@@ -82,6 +82,9 @@ class PublicationRequirementsTest extends TestCase
                         ['id' => 4, 'nome' => 'Ação', 'valor' => '1200000.00', 'atividades' => [['id' => 5, 'nome' => 'Edital', 'valor' => '700000.00']]],
                         ['id' => 9, 'nome' => 'Outra ação', 'valor' => '1.00', 'atividades' => [['id' => 6, 'nome' => 'Outro edital', 'valor' => '1.00']]],
                     ]],
+                    ['id' => 10, 'nome' => 'Outra meta', 'valor' => '1.00', 'acoes' => [
+                        ['id' => 11, 'nome' => 'Ação da outra meta', 'valor' => '1.00', 'atividades' => [['id' => 12, 'nome' => 'Edital da outra meta', 'valor' => '1.00']]],
+                    ]],
                 ]],
                 ['id' => 2027, 'ano' => 2027, 'metas' => [
                     ['id' => 8, 'nome' => 'Meta de 2027', 'valor' => '1.00', 'acoes' => []],
@@ -131,9 +134,11 @@ class PublicationRequirementsTest extends TestCase
 
     public function testAnActionOfAnotherGoalIsRefused()
     {
-        $missing = $this->chainMissing([Meta::PAR_GOAL_ID => '8', Meta::PAR_EXERCISE_ID => '2027', Meta::PAR_ACTION_ID => '4']);
+        // duas metas com ações no mesmo exercício: a ação 4 existe na árvore, mas pertence à meta 3
+        $missing = $this->chainMissing([Meta::PAR_GOAL_ID => '10', Meta::PAR_ACTION_ID => '4', Meta::PAR_ACTIVITY_ID => '5']);
 
         $this->assertSame([Meta::PAR_ACTION_ID], array_keys($missing));
+        $this->assertSame([], $this->chainMissing([Meta::PAR_GOAL_ID => '10', Meta::PAR_ACTION_ID => '11', Meta::PAR_ACTIVITY_ID => '12']));
     }
 
     public function testAnActivityOfAnotherActionIsRefused()
