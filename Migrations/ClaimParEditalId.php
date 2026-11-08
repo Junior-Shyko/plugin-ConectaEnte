@@ -19,7 +19,7 @@ final class ClaimParEditalId
                 SELECT id FROM (
                     SELECT id, row_number() OVER (PARTITION BY value ORDER BY object_id, id) AS position
                     FROM opportunity_meta
-                    WHERE key = ?
+                    WHERE key = ? AND value <> \'\'
                 ) ranked WHERE position > 1
             )',
             [CultBrMetadata::PAR_EDITAL_ID]

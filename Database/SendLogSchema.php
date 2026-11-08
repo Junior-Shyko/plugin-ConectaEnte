@@ -95,9 +95,10 @@ class SendLogSchema
         ];
     }
 
-    // índice parcial sobre o metadado que o envio aceito grava: o banco garante um dono por edital do CultBR
+    // índice parcial sobre o metadado que o envio aceito grava: o banco garante um dono por edital do CultBR.
+    // Valor vazio fica de fora: metadado limpo pela API não é id, e duas oportunidades podem tê-lo vazio
     public static function createParEditalOwnerIndex($metadataKey)
     {
-        return 'CREATE UNIQUE INDEX ' . self::UNIQUE_PAR_EDITAL_OWNER . " ON opportunity_meta (value) WHERE key = '" . $metadataKey . "'";
+        return 'CREATE UNIQUE INDEX ' . self::UNIQUE_PAR_EDITAL_OWNER . " ON opportunity_meta (value) WHERE key = '" . $metadataKey . "' AND value <> ''";
     }
 }

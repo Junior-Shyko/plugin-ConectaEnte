@@ -71,4 +71,32 @@ class AttemptSanitizerTest extends TestCase
     {
         $this->assertNull(AttemptSanitizer::headers([]));
     }
+
+    public function testNulIsRemovedFromThePayloadValuesBeforeEncoding()
+    {
+        $json = AttemptSanitizer::payloadJson(['a' => "x\0y", 'nested' => ['b' => "\0"]]);
+
+        $this->assertSame(['a' => 'xy', 'nested' => ['b' => '']], json_decode($json, true));
+    }
+
+    public function testALiteralBackslashFollowedByU0000SurvivesInThePayload()
+    {
+        $json = AttemptSanitizer::payloadJson(['a' => 'termina em \\u0000']);
+
+        $this->assertNotNull($json);
+        $this->assertSame('termina em \\u0000', json_decode($json, true)['a']);
+    }
+
+    public function testALiteralBackslashU0000ResponseIsStoredDecoded()
+    {
+        $response = AttemptSanitizer::response(json_encode(['a' => 'termina em \\u0000']));
+
+        $this->assertSame(['a' => 'termina em \\u0000'], $response);
+    }
+
+    public function testLimitedCutsInCharactersAndKeepsNull()
+    {
+        $this->assertSame('ééé', AttemptSanitizer::limited('ééééé', 3));
+        $this->assertNull(AttemptSanitizer::limited(null, 3));
+    }
 }

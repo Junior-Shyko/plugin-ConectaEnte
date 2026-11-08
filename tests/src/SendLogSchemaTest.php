@@ -45,9 +45,16 @@ class SendLogSchemaTest extends TestCase
     public function testParEditalOwnerIndexIsUniqueAndPartial()
     {
         $this->assertSame(
-            "CREATE UNIQUE INDEX unq_conectaente_par_edital_id ON opportunity_meta (value) WHERE key = 'conectaente_parEditalId'",
+            "CREATE UNIQUE INDEX unq_conectaente_par_edital_id ON opportunity_meta (value) WHERE key = 'conectaente_parEditalId' AND value <> ''",
             SendLogSchema::createParEditalOwnerIndex('conectaente_parEditalId')
         );
+    }
+
+    // metadado limpo pela API vira '': duas oportunidades podem tê-lo vazio sem violar a unicidade
+    public function testEmptyValuesAreOutOfTheOwnerIndexAndTheCleanup()
+    {
+        $this->assertStringContainsString("AND value <> ''", SendLogSchema::createParEditalOwnerIndex('k'));
+        $this->assertStringContainsString("AND value <> \\'\\'", file_get_contents(dirname(__DIR__, 2) . '/Migrations/ClaimParEditalId.php'));
     }
 
     public function testMigrationsArePrefixedAndCleanBeforeTheUniqueIndex()

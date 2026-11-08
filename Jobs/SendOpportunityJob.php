@@ -52,6 +52,11 @@ class SendOpportunityJob extends JobType
             $entity = (new FederativeEntityRepository())->findById((int) $job->entityId);
 
             if (!$opportunity || !$entity) {
+                // numa retentativa o envio já está aberto: sem encerrá-lo, ficaria pending para sempre
+                if ($job->requestUuid) {
+                    $logs->finish($job->requestUuid, SendOutcome::ABANDONED);
+                }
+
                 return $this->finish($job, SendOutcome::ABANDONED);
             }
 

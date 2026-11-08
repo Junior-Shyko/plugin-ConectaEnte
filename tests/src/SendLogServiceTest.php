@@ -20,6 +20,7 @@ class SendLogServiceTest extends TestCase
     private $statements;
     private $logged;
     private $service;
+    private $affected = 1;
 
     protected function setUp(): void
     {
@@ -29,7 +30,7 @@ class SendLogServiceTest extends TestCase
         $this->connection->method('executeUpdate')->willReturnCallback(function ($sql, $params) {
             $this->statements[] = [preg_replace('/\s+/', ' ', $sql), $params];
 
-            return 1;
+            return $this->affected;
         });
         $this->service = new SendLogService($this->connection, function ($message) {
             $this->logged[] = $message;
@@ -42,21 +43,51 @@ class SendLogServiceTest extends TestCase
         $this->assertNotSame(SendLogService::newUuid(), SendLogService::newUuid());
     }
 
-    public function testStartAbandonsOtherPendingBeforeOpeningAndNeverTouchesItsOwn()
+    public function testStartingAbandonsOtherPendingAndNeverTouchesItsOwn()
     {
         $this->service->startOrResume(self::UUID, 7, 3);
 
         $this->assertCount(2, $this->statements);
-        list($abandon, $params) = $this->statements[0];
+        list($abandon, $params) = $this->statements[1];
         $this->assertStringContainsString("SET status = :abandoned", $abandon);
         $this->assertStringContainsString('status = :pending AND request_uuid <> :except', $abandon);
         $this->assertSame(self::UUID, $params['except']);
         $this->assertSame('abandoned', $params['abandoned']);
 
-        list($insert, $insertParams) = $this->statements[1];
+        list($insert, $insertParams) = $this->statements[0];
         $this->assertStringContainsString('ON CONFLICT (request_uuid) DO NOTHING', $insert);
         $this->assertSame('pending', $insertParams['status']);
         $this->assertSame(3, $insertParams['user']);
+    }
+
+    public function testResumingAnExistingSendDoesNotAbandonTheNewerOnes()
+    {
+        $this->affected = 0;
+
+        $this->service->startOrResume(self::UUID, 7);
+
+        $this->assertCount(1, $this->statements);
+        $this->assertStringContainsString('INSERT INTO conectaente_send_log', $this->statements[0][0]);
+    }
+
+    public function testADeletedUserDoesNotBlockOpeningTheSend()
+    {
+        $this->service->startOrResume(self::UUID, 7, 99);
+
+        $this->assertStringContainsString('(SELECT id FROM usr WHERE id = CAST(:user AS integer))', $this->statements[0][0]);
+    }
+
+    public function testCorrelationValuesAreCutToTheColumnSize()
+    {
+        $exchange = new Exchange('https://h/x', 'POST', ['id' => 7], 200, '{"a":1}');
+        $report = new SendReport(SendOutcome::SUCCESS, null, str_repeat('9', 100), str_repeat('r', 300), $exchange);
+
+        $this->service->recordAttempt(self::UUID, 1, 3, $report);
+
+        $params = $this->statements[0][1];
+        $this->assertSame(64, strlen($params['par_edital_id']));
+        $this->assertSame(255, strlen($params['request_id']));
+        $this->assertSame('{"a":1}', $params['response']);
     }
 
     public function testAbandoningIsASingleConditionalUpdate()
@@ -164,8 +195,8 @@ class SendLogServiceTest extends TestCase
         $this->assertFalse($service->startOrResume(self::UUID, 7));
         $this->assertFalse($service->finish(self::UUID, SendOutcome::SUCCESS));
         $this->assertFalse($service->recordAttempt(self::UUID, 1, 3, new SendReport(SendOutcome::ERROR, 'x')));
-        // abrir o envio falha duas vezes: ao abandonar os pendentes e ao inserir; uma não impede a outra
-        $this->assertCount(4, $this->logged);
+        // abrir o envio falha no INSERT e não segue para abandonar os pendentes
+        $this->assertCount(3, $this->logged);
         $this->assertStringContainsString('connection lost', $this->logged[0]);
     }
 }

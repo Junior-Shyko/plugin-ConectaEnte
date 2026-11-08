@@ -14,6 +14,9 @@ use Doctrine\DBAL\Connection;
 class SendLogService
 {
     const ACTION_SEND = 'send';
+    // tamanhos das colunas par_edital_id e request_id (SendLogSchema)
+    const PAR_EDITAL_ID_LENGTH = 64;
+    const REQUEST_ID_LENGTH = 255;
 
     private $connection;
     private $logger;
@@ -44,12 +47,12 @@ class SendLogService
     public function startOrResume($uuid, $opportunityId, $userId = null)
     {
         return $this->guarded('abrir o envio', function () use ($uuid, $opportunityId, $userId) {
-            $this->abandonPending($opportunityId, $uuid);
-
-            // ON CONFLICT: a retentativa reabre o mesmo UUID sem duplicar
-            $this->connection->executeUpdate(
+            // ON CONFLICT: a retentativa reabre o mesmo UUID sem duplicar. O usuário vem do enfileiramento e pode ter
+            // sido apagado desde então: a FK recusaria o INSERT e o envio ficaria sem histórico
+            $created = $this->connection->executeUpdate(
                 'INSERT INTO ' . SendLogSchema::LOG_TABLE . ' (id, request_uuid, opportunity_id, action, status, user_id, create_timestamp)
-                 VALUES (nextval(\'' . SendLogSchema::LOG_SEQUENCE . '\'), :uuid, CAST(:opportunity AS integer), :action, :status, CAST(:user AS integer), now())
+                 VALUES (nextval(\'' . SendLogSchema::LOG_SEQUENCE . '\'), :uuid, CAST(:opportunity AS integer), :action, :status,
+                    (SELECT id FROM usr WHERE id = CAST(:user AS integer)), now())
                  ON CONFLICT (request_uuid) DO NOTHING',
                 [
                     'uuid' => $uuid,
@@ -59,6 +62,11 @@ class SendLogService
                     'user' => $userId,
                 ]
             );
+
+            // só quem abre um envio novo substitui os pendentes: um job antigo que retoma o seu não derruba o mais novo
+            if ($created > 0) {
+                $this->abandonPending($opportunityId, $uuid);
+            }
         });
     }
 
@@ -115,8 +123,8 @@ class SendLogService
                     'payload' => $exchange ? AttemptSanitizer::payloadJson($exchange->getPayload()) : null,
                     'response' => $exchange ? AttemptSanitizer::json(AttemptSanitizer::response($exchange->getBody())) : null,
                     'headers' => $exchange ? AttemptSanitizer::json(AttemptSanitizer::headers($exchange->getHeaders())) : null,
-                    'par_edital_id' => $report->getParEditalId(),
-                    'request_id' => $report->getRequestId() !== null ? AttemptSanitizer::text($report->getRequestId()) : null,
+                    'par_edital_id' => AttemptSanitizer::limited($report->getParEditalId(), self::PAR_EDITAL_ID_LENGTH),
+                    'request_id' => AttemptSanitizer::limited($report->getRequestId(), self::REQUEST_ID_LENGTH),
                     'error' => $message !== null ? AttemptSanitizer::text($message) : null,
                     'status' => $status,
                     'duration' => $exchange ? $exchange->getDurationMs() : null,

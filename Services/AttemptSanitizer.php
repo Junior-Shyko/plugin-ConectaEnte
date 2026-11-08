@@ -46,8 +46,8 @@ final class AttemptSanitizer
 
         $decoded = json_decode($text, true);
 
-        // json_encode de volta pega o "\u0000" escapado, que decodifica sem erro mas o JSONB recusa
-        if (is_array($decoded) && strpos(json_encode($decoded), '\u0000') === false) {
+        // o escape "\u0000" decodifica sem erro, mas o JSONB recusa o caractere
+        if (is_array($decoded) && !self::hasNul($decoded)) {
             return $decoded;
         }
 
@@ -65,12 +65,37 @@ final class AttemptSanitizer
         return $clean === [] ? null : $clean;
     }
 
-    // o payload é montado pelo plugin e já passou pelo json_encode do envio; nulo só se ainda assim não serializar
+    // o NUL sai dos valores, antes de codificar: trocar o escape no JSON pronto quebraria uma barra invertida literal
     public static function payloadJson(array $payload)
     {
+        array_walk_recursive($payload, function (&$value) {
+            if (is_string($value)) {
+                $value = str_replace("\0", '', $value);
+            }
+        });
+
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
-        return $json === false ? null : str_replace('\u0000', '', $json);
+        return $json === false ? null : $json;
+    }
+
+    private static function hasNul(array $value)
+    {
+        $found = false;
+
+        array_walk_recursive($value, function ($item, $key) use (&$found) {
+            if ((is_string($item) && strpos($item, "\0") !== false) || (is_string($key) && strpos($key, "\0") !== false)) {
+                $found = true;
+            }
+        });
+
+        return $found;
+    }
+
+    // coluna com limite: um valor maior derrubaria a tentativa inteira, com payload e resposta
+    public static function limited($value, $length)
+    {
+        return $value === null ? null : mb_substr(self::text($value), 0, $length, 'UTF-8');
     }
 
     public static function json($value)
