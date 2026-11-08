@@ -354,9 +354,8 @@ class Plugin extends \MapasCulturais\Plugin
 
             $app->view->enqueueStyle('app', 'conectaente-opportunity-blocks', 'css/conecta-ente/opportunity-blocks.css');
             $app->view->enqueueScript('app', 'conectaente-opportunity-blocks', 'js/conecta-ente/opportunity-blocks.js', ['mapasculturais']);
-            // a cascata do PAR é o único componente AngularJS do plugin: o módulo entra nas dependências do entity.app
+            // a cascata do PAR é o único componente AngularJS do plugin; o módulo entra no entity.app pelo próprio script
             $app->view->enqueueScript('app', 'conectaente-par-cascade', 'js/conecta-ente/par-cascade.js', ['entity.module.opportunity']);
-            $app->view->jsObject['angularAppDependencies'][] = 'conecta-ente.par';
         });
 
         $app->hook('template(opportunity.edit.tabs):end', function () {

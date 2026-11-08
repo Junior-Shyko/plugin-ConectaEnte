@@ -45,6 +45,12 @@
      */
     var module = angular.module('conecta-ente.par', []);
 
+    // o entity.app lê esta lista (a mesma referência) só na inicialização, então entrar aqui antes do bootstrap basta.
+    // Feito no cliente porque o tema redefine `angularAppDependencies` no servidor, depois do que o plugin registra.
+    if (window.MapasCulturais && MapasCulturais.angularAppDependencies && MapasCulturais.angularAppDependencies.indexOf('conecta-ente.par') < 0) {
+        MapasCulturais.angularAppDependencies.push('conecta-ente.par');
+    }
+
     module.directive('conectaEntePar', ['$http', function ($http) {
         return {
             restrict: 'E',
