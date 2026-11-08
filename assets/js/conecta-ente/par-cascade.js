@@ -9,12 +9,6 @@
         {children: 'atividades'}
     ];
 
-    function formatBRL(value) {
-        var number = parseFloat(String(value));
-
-        return isFinite(number) ? number.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) : '';
-    }
-
     function findNode(list, id) {
         for (var i = 0; i < list.length; i++) {
             if (String(list[i].id) === String(id)) {
@@ -28,13 +22,8 @@
     function labelOf(index, node) {
         // o exercício se chama pelo ano; os demais pelo nome. Sem nome, o id, para o nó continuar identificável
         var name = index === 0 ? node.ano : node.nome;
-        var text = name !== null && name !== undefined && String(name) !== '' ? String(name) : 'Id ' + node.id;
 
-        if (index > 0 && node.valor !== null && node.valor !== undefined && node.valor !== '') {
-            text += ' — ' + formatBRL(node.valor);
-        }
-
-        return text;
+        return name !== null && name !== undefined && String(name) !== '' ? String(name) : 'Id ' + node.id;
     }
 
     /**
