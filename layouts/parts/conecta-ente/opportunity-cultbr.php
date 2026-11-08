@@ -20,10 +20,12 @@ $choices = [
     <p class="registration-help">
         <?php i::_e('Dados que o CultBR (Conecta Ente) exige do edital de ente federado e que o Mapas Culturais não tem. Eles serão enviados junto com a oportunidade.'); ?>
     </p>
+    <fieldset class="conectaente-par">
+        <legend><strong><?= i::__('Dados do PAR') ?> </strong>*</legend>
 
     <?php foreach ($choices as $key => $specifyKey): ?>
         <?php $label = $definitions[$key]['label']; ?>
-        <p>
+        <p  class="conectaente-paragraf">
             <span class="label"><?= $label ?> *:</span>
             <?php if ($definitions[$key]['type'] === 'multiselect'): ?>
                 <editable-multiselect
@@ -39,7 +41,7 @@ $choices = [
             <?php endif; ?>
         </p>
         <?php if ($specifyKey !== null): ?>
-            <p>
+            <p class="conectaente-paragraf">
                 <span class="label"><?= $definitions[$specifyKey]['label'] ?>:</span>
                 <span class="js-editable"
                       data-edit="<?= $specifyKey ?>"
@@ -49,6 +51,16 @@ $choices = [
         <?php endif; ?>
     <?php endforeach; ?>
 
+        <p class="conectaente-paragraf">
+        <span class="label"><?= i::__('Data de publicação do edital') ?> *:</span>
+        <span class="js-editable"
+              data-edit="<?= Meta::PUBLICATION_DATE ?>"
+              data-type="date"
+              data-original-title="<?= htmlspecialchars(i::__('Data de publicação do edital'), ENT_QUOTES) ?>"
+              data-emptytext="<?php i::esc_attr_e('Informe a data'); ?>"><?= htmlspecialchars((string) $entity->getMetadata(Meta::PUBLICATION_DATE)) ?></span>
+    </p>
+
+    </fieldset>
     <?php
     // a cascata do PAR (par-cascade.js, AngularJS): lê a árvore do cache e grava os quatro ids juntos
     $parConfig = [
@@ -66,18 +78,17 @@ $choices = [
         ],
     ];
     ?>
-    <div id="conectaente-par" class="conectaente-par">
+    <fieldset class="conectaente-par">
+        <legend><strong><?= i::__('Dados do PAR') ?> </strong>*</legend>
+        <p class="conectaente-paragraf">
+        <span>Exercício, meta, ação e atividade do Plano de Ação e Referência do Ente Federado que selou este edital.</span>
+        </p>
+        <p class="conectaente-paragraf">
         <conecta-ente-par config="<?= htmlspecialchars(json_encode($parConfig), ENT_QUOTES) ?>"></conecta-ente-par>
-    </div>
+        </p>
+    </fieldset>
 
-    <p>
-        <span class="label"><?= i::__('Data de publicação do edital') ?> *:</span>
-        <span class="js-editable"
-              data-edit="<?= Meta::PUBLICATION_DATE ?>"
-              data-type="date"
-              data-original-title="<?= htmlspecialchars(i::__('Data de publicação do edital'), ENT_QUOTES) ?>"
-              data-emptytext="<?php i::esc_attr_e('Informe a data'); ?>"><?= htmlspecialchars((string) $entity->getMetadata(Meta::PUBLICATION_DATE)) ?></span>
-    </p>
+
 
     <?php
     $blocks = [
