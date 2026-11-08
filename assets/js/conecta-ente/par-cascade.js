@@ -20,17 +20,14 @@
     }
 
     function labelOf(index, node) {
-        // o exercício se chama pelo ano; os demais pelo nome. Sem nome, o id, para o nó continuar identificável
         var name = index === 0 ? node.ano : node.nome;
 
         return name !== null && name !== undefined && String(name) !== '' ? String(name) : 'Id ' + node.id;
     }
 
     /**
-     * Cascata do PAR na aba do ente. Lê a árvore do cache pelo endpoint do plugin e grava os quatro ids juntos:
-     * uma seleção incompleta grava vazio nos quatro, então nunca fica um nível sem os de cima.
-     * Abrir a aba não grava nada; os inputs ocultos começam com o que já estava guardado, para o "Salvar" da
-     * página não apagá-lo.
+     * Abrir a aba não grava nada, e os inputs ocultos começam com o valor guardado, para o "Salvar" da página
+     * não apagá-lo.
      */
     var module = angular.module('conecta-ente.par', []);
 
@@ -96,7 +93,6 @@
                     return value === null || value === undefined ? '' : String(value).trim();
                 }
 
-                // filhos disponíveis no nível: a raiz, ou os filhos do nó escolhido acima
                 function listFor(index) {
                     if (index === 0) {
                         return tree;

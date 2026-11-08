@@ -113,7 +113,7 @@ class PublicationRequirements
 
     /**
      * Os quatro ids do PAR são obrigatórios e vêm juntos: a seleção parcial não publica e cada nível
-     * faltante é nomeado. A consistência da cadeia com a árvore do ente fica em parChainErrors().
+     * faltante é nomeado.
      */
     private function parErrors($opportunity)
     {
