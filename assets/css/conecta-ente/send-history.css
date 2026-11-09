@@ -1,0 +1,110 @@
+.conectaente-history__log {
+    border: 1px solid #ddd;
+    border-left-width: 4px;
+    border-radius: 4px;
+    margin: 0 0 .75rem;
+}
+
+.conectaente-history__log--success { border-left-color: #2e7d32; }
+.conectaente-history__log--error,
+.conectaente-history__log--rejected { border-left-color: #c62828; }
+.conectaente-history__log--pending { border-left-color: #f9a825; }
+.conectaente-history__log--simulated { border-left-color: #1565c0; }
+.conectaente-history__log--abandoned { border-left-color: #757575; }
+
+.conectaente-history__head,
+.conectaente-history__attempt-head {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    font: inherit;
+    gap: .75rem;
+    padding: .6rem .8rem;
+    text-align: left;
+    width: 100%;
+}
+
+.conectaente-history__head:focus-visible,
+.conectaente-history__attempt-head:focus-visible {
+    outline: 2px solid #1565c0;
+    outline-offset: -2px;
+}
+
+.conectaente-history__uuid {
+    font-family: monospace;
+    font-size: .85em;
+}
+
+.conectaente-history__date,
+.conectaente-history__user {
+    color: #666;
+}
+
+.conectaente-history__badge {
+    border-radius: 3px;
+    color: #fff;
+    font-size: .8em;
+    padding: .15rem .5rem;
+    background: #757575;
+}
+
+.conectaente-history__badge--success { background: #2e7d32; }
+.conectaente-history__badge--error,
+.conectaente-history__badge--rejected { background: #c62828; }
+.conectaente-history__badge--pending { background: #f9a825; color: #333; }
+.conectaente-history__badge--simulated { background: #1565c0; }
+
+.conectaente-history__body {
+    border-top: 1px solid #eee;
+    padding: .5rem .8rem;
+}
+
+.conectaente-history__attempt {
+    border: 1px solid #eee;
+    border-radius: 3px;
+    margin: .5rem 0;
+}
+
+.conectaente-history__attempt-body {
+    display: grid;
+    gap: .25rem 1rem;
+    grid-template-columns: max-content 1fr;
+    margin: 0;
+    padding: 0 .8rem;
+}
+
+.conectaente-history__attempt-body dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.conectaente-history__block {
+    padding: .5rem .8rem;
+}
+
+.conectaente-history__block-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.conectaente-history__block pre {
+    max-height: 22rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.conectaente-history__sub {
+    color: #666;
+    font-size: .85em;
+    margin: .5rem 0 0;
+}
+
+.conectaente-history__warning {
+    color: #8a6d00;
+}

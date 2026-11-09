@@ -133,7 +133,7 @@ class SendLog extends \MapasCulturais\Entity
         return $this->attempts;
     }
 
-    // só admin consulta o histórico por esta entidade; a tela da oportunidade (#55) passa por endpoint próprio
+    // quem lê o histórico é o endpoint (permissão de edição da oportunidade); pela entidade, só o saasSuperAdmin
     public function canUser($action, $userOrAgent = null)
     {
         $app = App::i();
@@ -144,6 +144,6 @@ class SendLog extends \MapasCulturais\Entity
 
         $user = $userOrAgent ?: $app->user;
 
-        return $action === 'view' && $user && !$user->is('guest') && $user->is('admin');
+        return $user && !$user->is('guest') && $user->is('saasSuperAdmin');
     }
 }
