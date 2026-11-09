@@ -30,12 +30,13 @@ class SendOutcome extends AbstractVocabulary
     protected static function texts()
     {
         return [
-            self::PENDING => 'Aguardando nova tentativa',
+            self::PENDING => 'Em andamento',
             self::SUCCESS => 'Enviado',
             self::ERROR => 'Falhou',
             self::SIMULATED => 'Simulado',
-            self::ABANDONED => 'Cancelado',
-            self::REJECTED => 'Recusado pelo CultBR',
+            // também cobre ente ou oportunidade apagados e a inelegibilidade na execução; o rótulo segue a v7
+            self::ABANDONED => 'Substituído',
+            self::REJECTED => 'Recusado',
         ];
     }
 }

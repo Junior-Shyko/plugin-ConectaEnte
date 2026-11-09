@@ -7,6 +7,8 @@ use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Http\ParInformationResult;
 use ConectaEnte\Plugin;
+use ConectaEnte\Repositories\SendLogRepository;
+use ConectaEnte\Services\SendHistoryService;
 use ConectaEnte\Services\FederativeEntityService;
 use MapasCulturais\App;
 
@@ -89,6 +91,22 @@ class ConectaEnteController extends \MapasCulturais\Controller
         }
 
         $this->json($result->toArray());
+    }
+
+    /**
+     * Histórico de envios da oportunidade, do mais novo ao mais antigo, 20 por página (`?page=`).
+     */
+    public function GET_logs()
+    {
+        $this->requireAuthentication();
+
+        $service = new SendHistoryService(new SendLogRepository(), function ($opportunityId) {
+            return Plugin::canViewSendHistory($opportunityId);
+        });
+
+        $result = $service->page($this->opportunityId(), isset($this->data['page']) ? $this->data['page'] : 1);
+
+        $this->json($result->getBody(), $result->getStatus());
     }
 
     // o id vem como argumento da rota (posicional) ou como `id` nos dados

@@ -227,6 +227,6 @@ class SendLogAttempt extends \MapasCulturais\Entity
 
         $user = $userOrAgent ?: $app->user;
 
-        return $action === 'view' && $user && !$user->is('guest') && $user->is('admin');
+        return $user && !$user->is('guest') && $user->is('saasSuperAdmin');
     }
 }
