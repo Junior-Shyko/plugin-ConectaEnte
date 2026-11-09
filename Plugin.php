@@ -267,6 +267,13 @@ class Plugin extends \MapasCulturais\Plugin
         }
     }
 
+    private static function currentUserId()
+    {
+        $user = App::i()->user;
+
+        return $user && !$user->is('guest') ? (int) $user->id : null;
+    }
+
     /**
      * Enfileira o envio da raiz, se ela for elegível. Editar uma fase reenvia a raiz (decisão de #48).
      */
@@ -288,7 +295,7 @@ class Plugin extends \MapasCulturais\Plugin
 
             App::i()->enqueueOrReplaceJob(
                 SendOpportunityJob::SLUG,
-                ['opportunityId' => $root->id, 'entityId' => $eligibility->getEntity()->getId()],
+                ['opportunityId' => $root->id, 'entityId' => $eligibility->getEntity()->getId(), 'userId' => self::currentUserId()],
                 'now',
                 Config::retryDelay(),
                 Config::maxAttempts()

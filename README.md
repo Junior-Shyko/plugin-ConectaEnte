@@ -123,7 +123,9 @@ are logged, never used.
   and a «Atualizar» button when there is no tree.
 - **Publication chain.** On publish, with a tree in the cache, the chosen exercise → goal → action → activity must
   be a path of that tree (`PublicationRequirements::parChainErrors()`); the first broken level is named. Without
-  a cached tree the chain is not checked. The send path (`SendEligibility`) does not check the chain.
+  a cached tree the chain is not checked. The send path (`SendEligibility`) checks it again with the cached
+  tree, when scheduling and when running: an opportunity published without a cached tree can have its send
+  refused once the tree is available.
 - **Simulated mode** reads `fixtures/par-information.json`, which has the real API shape.
 
 Not verified here: the production contract still lists this path as absent (the #52 note), so it must be
