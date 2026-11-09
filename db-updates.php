@@ -1,6 +1,9 @@
 <?php
 
 use ConectaEnte\Database\FederativeEntitySchema;
+use ConectaEnte\Database\SendLogSchema;
+use ConectaEnte\Metadata\CultBrMetadata;
+use ConectaEnte\Migrations\ClaimParEditalId;
 
 use function MapasCulturais\__column_exists;
 use function MapasCulturais\__exec;
@@ -31,5 +34,36 @@ return [
         if (!__table_exists(FederativeEntitySchema::TABLE)) {
             __exec(FederativeEntitySchema::createTable());
         }
+    },
+
+    'conectaente: create send_log tables' => function () {
+        if (!__sequence_exists(SendLogSchema::LOG_SEQUENCE)) {
+            __exec(SendLogSchema::createLogSequence());
+        }
+
+        if (!__sequence_exists(SendLogSchema::ATTEMPT_SEQUENCE)) {
+            __exec(SendLogSchema::createAttemptSequence());
+        }
+
+        if (!__table_exists(SendLogSchema::LOG_TABLE)) {
+            __exec(SendLogSchema::createLogTable());
+            __exec(SendLogSchema::createLogIndex());
+        }
+
+        if (!__table_exists(SendLogSchema::ATTEMPT_TABLE)) {
+            __exec(SendLogSchema::createAttemptTable());
+
+            foreach (SendLogSchema::createAttemptIndexes() as $sql) {
+                __exec($sql);
+            }
+        }
+    },
+
+    // a limpeza vem antes do índice, no mesmo passo: índice único não nasce com acervo duplicado
+    'conectaente: one opportunity per par_edital_id' => function () {
+        ClaimParEditalId::run();
+
+        __exec('DROP INDEX IF EXISTS ' . SendLogSchema::UNIQUE_PAR_EDITAL_OWNER);
+        __exec(SendLogSchema::createParEditalOwnerIndex(CultBrMetadata::PAR_EDITAL_ID));
     },
 ];

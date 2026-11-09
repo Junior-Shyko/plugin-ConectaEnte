@@ -4,6 +4,7 @@ namespace ConectaEnte\Services;
 
 use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Http\Client;
+use ConectaEnte\Http\Exchange;
 use ConectaEnte\Http\SendResult;
 use ConectaEnte\Payload\OpportunityPayload;
 use ConectaEnte\Vocabulary\SendOutcome;
@@ -40,16 +41,19 @@ class OpportunitySender
 
         // o modo dev monta e valida o payload, mas não chama o CultBR: nunca conta como sucesso
         if (!$this->live) {
-            return new SendReport(SendOutcome::SIMULATED);
+            $exchange = Exchange::simulated($this->client->sendOpportunityUrl(), Client::SEND_METHOD, $payload);
+
+            return new SendReport(SendOutcome::SIMULATED, null, null, null, $exchange);
         }
 
-        $result = $this->client->sendOpportunity($entity->getToken(), $opportunity->id, $payload);
+        $result = $this->client->sendOpportunity($entity->getToken(), $payload);
 
         return new SendReport(
             RetryPolicy::outcome($result, $attempt, $maxAttempts),
             $this->messageOf($result),
             $this->parEditalIdOf($result),
-            $result->getRequestId()
+            $result->getRequestId(),
+            $result->getExchange()
         );
     }
 

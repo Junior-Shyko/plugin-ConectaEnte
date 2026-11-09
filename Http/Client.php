@@ -13,6 +13,8 @@ class Client
 {
     const TYPE_SYSTEM = 'SISTEMA';
     const WRONG_TYPE_MESSAGE = 'Este token é válido, mas não é um token de sistema (ente).';
+    // o POST cria ou atualiza (o id do Mapas vai no corpo); o PUT /{id} só atualiza e responde 404 a edital ainda não enviado
+    const SEND_METHOD = 'POST';
     const PAR_PAGE_SIZE = 100;
     const PAR_MAX_PAGES = 50;
 
@@ -157,10 +159,16 @@ class Client
      * Envia o edital selado; 5xx e falha de conexão são a única faixa retentável (retentativa
      * fica para a #49).
      */
-    public function sendOpportunity($token, $idMapa, array $payload)
+    public function sendOpportunity($token, array $payload)
     {
-        $response = $this->transport->put($this->sendOpportunityUrl($idMapa), $payload, ['token' => $token]);
+        $url = $this->sendOpportunityUrl();
+        $response = $this->transport->post($url, $payload, ['token' => $token]);
 
+        return $this->classifySend($response)->withExchange(Exchange::fromResponse($url, self::SEND_METHOD, $payload, $response));
+    }
+
+    private function classifySend(Response $response)
+    {
         if (!$response->reachedServer() || $response->getStatus() >= 500) {
             return SendResult::unreachable($response->getStatus(), $response->getTransportError());
         }
@@ -181,9 +189,9 @@ class Client
         return SendResult::rejected($this->readDetail($response->json(), $response->getStatus(), $this->translate('A Plataforma CultBR recusou o envio do edital (HTTP %d).')), $response->getStatus());
     }
 
-    public function sendOpportunityUrl($idMapa)
+    public function sendOpportunityUrl()
     {
-        return $this->url('/api/v1/oportunidades/' . $idMapa);
+        return $this->url('/api/v1/oportunidades/');
     }
 
     private function readValidation(array $body)

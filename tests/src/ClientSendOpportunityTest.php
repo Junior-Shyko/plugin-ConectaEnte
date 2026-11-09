@@ -14,7 +14,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 42, 'status' => 'recebido']);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertTrue($result->isAccepted());
         $this->assertSame(42, $result->getResponse()['id_oportunidades_mapa']);
@@ -24,7 +24,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 42], ['x-request-id' => 'req-123']);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertSame('req-123', $result->getRequestId());
     }
@@ -33,7 +33,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 42], ['X-Request-Id' => 'req-456']);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertSame('req-456', $result->getRequestId());
     }
@@ -42,7 +42,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(200, '<html>proxy</html>', []);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertFalse($result->isAccepted());
         $this->assertTrue($result->isUnreachable());
@@ -53,7 +53,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(422, ['detail' => 'numero_previsto_vagas: campo obrigatório']);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertFalse($result->isAccepted());
         $this->assertSame(422, $result->getStatus());
@@ -63,7 +63,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(500, 'erro interno', []);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
         $this->assertTrue($result->isUnreachable());
         $this->assertSame(500, $result->getStatus());
@@ -73,21 +73,21 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 1]);
 
-        (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7, 'numero_e_titulo_edital' => 'Edital 1']);
+        (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7, 'numero_e_titulo_edital' => 'Edital 1']);
 
         $this->assertSame(['id' => 7, 'numero_e_titulo_edital' => 'Edital 1'], $transport->sentBodies[0]);
         $this->assertSame(['token' => 'um-token'], $transport->sentHeaders[0]);
     }
 
-    // o contrato só atualiza via PUT no recurso, identificado pelo id na própria URL
-    public function testTheSendGoesAsAPutToTheResource()
+    // o POST na coleção cria ou atualiza; o id do Mapas vai no corpo
+    public function testTheSendGoesAsAPostToTheCollection()
     {
         $transport = FakeTransport::replying(200, ['id_oportunidades_mapa' => 1]);
 
-        (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, ['id' => 7]);
+        (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7]);
 
-        $this->assertSame('PUT', $transport->sentVerbs[0]);
-        $this->assertSame(self::HOST . '/api/v1/oportunidades/7', $transport->requestedUrls[0]);
+        $this->assertSame('POST', $transport->sentVerbs[0]);
+        $this->assertSame(self::HOST . '/api/v1/oportunidades/', $transport->requestedUrls[0]);
     }
 
     public function testClientErrorsAreRejectedNotUnreachable()
@@ -95,7 +95,7 @@ class ClientSendOpportunityTest extends TestCase
         foreach ([400, 401, 403, 422] as $status) {
             $transport = FakeTransport::replying($status, ['detail' => 'motivo']);
 
-            $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+            $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
             $this->assertFalse($result->isAccepted());
             $this->assertFalse($result->isUnreachable(), "status {$status} não pode virar unreachable");
@@ -109,7 +109,7 @@ class ClientSendOpportunityTest extends TestCase
             ['loc' => ['body', 'ente_federado'], 'msg' => 'Field required', 'type' => 'missing'],
         ]]);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertSame('ente_federado: Field required', $result->getMessage());
     }
@@ -121,7 +121,7 @@ class ClientSendOpportunityTest extends TestCase
             ['loc' => ['body', 'forma_de_execucao'], 'msg' => 'Input should be a valid string', 'type' => 'string_type'],
         ]]);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertSame(
             'ente_federado: Field required; forma_de_execucao: Input should be a valid string',
@@ -135,7 +135,7 @@ class ClientSendOpportunityTest extends TestCase
             ['loc' => ['body', 'fontes_de_recurso', 0, 'valor'], 'msg' => 'Input should be a valid number', 'type' => 'float_parsing'],
         ]]);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertSame('fontes_de_recurso.0.valor: Input should be a valid number', $result->getMessage());
     }
@@ -144,7 +144,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(422, ['detail' => [['msg' => 'Erro sem campo', 'type' => 'value_error']]]);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertSame('Erro sem campo', $result->getMessage());
     }
@@ -157,7 +157,7 @@ class ClientSendOpportunityTest extends TestCase
         foreach ([['texto solto'], [null], [42], [[]]] as $detail) {
             $transport = FakeTransport::replying(422, ['detail' => $detail]);
 
-            $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+            $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
             $this->assertFalse($result->isAccepted());
             $this->assertSame($esperado, $result->getMessage());
@@ -170,7 +170,7 @@ class ClientSendOpportunityTest extends TestCase
             ['loc' => ['header', 'token'], 'msg' => 'Field required', 'type' => 'missing'],
         ]]);
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertSame('Field required', $result->getMessage());
     }
@@ -179,7 +179,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(400, 'Bad Request');
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertFalse($result->isUnreachable());
         $this->assertStringContainsString('400', $result->getMessage());
@@ -192,7 +192,7 @@ class ClientSendOpportunityTest extends TestCase
     {
         $transport = FakeTransport::replying(500, 'Internal Server Error');
 
-        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, $transport))->sendOpportunity('um-token', []);
 
         $this->assertTrue($result->isUnreachable());
         $this->assertSame(500, $result->getStatus());
@@ -201,8 +201,40 @@ class ClientSendOpportunityTest extends TestCase
 
     public function testTransportFailureIsUnreachable()
     {
-        $result = (new Client(self::HOST, FakeTransport::unreachable()))->sendOpportunity('um-token', 7, []);
+        $result = (new Client(self::HOST, FakeTransport::unreachable()))->sendOpportunity('um-token', []);
 
         $this->assertTrue($result->isUnreachable());
+    }
+
+    public function testKeepsWhatWasExchangedForTheHistory()
+    {
+        $transport = FakeTransport::replying(200, ['id_par_edital' => 9], ['x-request-id' => 'req-1'], 193);
+
+        $exchange = (new Client(self::HOST, $transport))->sendOpportunity('um-token', ['id' => 7])->getExchange();
+
+        $this->assertSame(self::HOST . '/api/v1/oportunidades/', $exchange->getEndpoint());
+        $this->assertSame('POST', $exchange->getMethod());
+        $this->assertSame(['id' => 7], $exchange->getPayload());
+        $this->assertSame(200, $exchange->getStatus());
+        $this->assertSame(['x-request-id' => 'req-1'], $exchange->getHeaders());
+        $this->assertSame(193, $exchange->getDurationMs());
+        $this->assertSame('{"id_par_edital":9}', $exchange->getBody());
+    }
+
+    public function testExchangeNeverCarriesTheToken()
+    {
+        $transport = FakeTransport::replying(200, ['id_par_edital' => 9]);
+
+        $exchange = (new Client(self::HOST, $transport))->sendOpportunity('um-token-secreto', ['id' => 7])->getExchange();
+
+        $this->assertStringNotContainsString('um-token-secreto', serialize($exchange));
+    }
+
+    public function testExchangeOfAnUnreachableServerHasNoStatus()
+    {
+        $exchange = (new Client(self::HOST, FakeTransport::unreachable()))->sendOpportunity('um-token', ['id' => 7])->getExchange();
+
+        $this->assertNull($exchange->getStatus());
+        $this->assertSame('Could not resolve host', $exchange->getTransportError());
     }
 }

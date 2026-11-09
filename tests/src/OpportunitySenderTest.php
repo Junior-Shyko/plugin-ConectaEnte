@@ -67,10 +67,10 @@ class OpportunitySenderTest extends TestCase
 
         $this->send($transport, true, 1);
 
-        $this->assertSame(['PUT'], $transport->sentVerbs);
+        $this->assertSame(['POST'], $transport->sentVerbs);
         $this->assertSame(['id' => 7], $transport->sentBodies[0]);
         $this->assertSame(['token' => 'token-do-ente'], $transport->sentHeaders[0]);
-        $this->assertSame(self::HOST . '/api/v1/oportunidades/7', $transport->requestedUrls[0]);
+        $this->assertSame(self::HOST . '/api/v1/oportunidades/', $transport->requestedUrls[0]);
     }
 
     /**
@@ -170,6 +170,23 @@ class OpportunitySenderTest extends TestCase
         $this->assertSame(SendOutcome::SIMULATED, $report->getOutcome());
         $this->assertSame([], $transport->sentVerbs);
         $this->assertNull($report->getParEditalId());
+    }
+
+    public function testDevModeKeepsTheSimulatedExchangeForTheHistory()
+    {
+        $exchange = $this->send(FakeTransport::replying(200, []), false, 1)->getExchange();
+
+        $this->assertSame(self::HOST . '/api/v1/oportunidades/', $exchange->getEndpoint());
+        $this->assertSame('POST', $exchange->getMethod());
+        $this->assertNull($exchange->getStatus());
+    }
+
+    public function testLiveSendKeepsTheExchangeForTheHistory()
+    {
+        $report = $this->send(FakeTransport::replying(200, ['id_par_edital' => 1], [], 80), true, 1);
+
+        $this->assertSame(200, $report->getExchange()->getStatus());
+        $this->assertSame(80, $report->getExchange()->getDurationMs());
     }
 
     public function testDevModeStillBuildsThePayload()
