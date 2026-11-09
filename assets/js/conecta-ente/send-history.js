@@ -34,22 +34,30 @@
         return {text: pretty(response), truncated: false};
     }
 
+    // rejeita quando a cópia não aconteceu: o botão só pode dizer «Copiado» se o texto foi mesmo para a área de transferência
     function copyText(text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             return navigator.clipboard.writeText(text);
         }
 
-        return new Promise(function (resolve) {
+        return new Promise(function (resolve, reject) {
             var area = document.createElement('textarea');
+            var copied = false;
 
             area.value = text;
             area.style.position = 'fixed';
             area.style.opacity = '0';
             document.body.appendChild(area);
             area.select();
-            document.execCommand('copy');
+
+            try {
+                copied = document.execCommand('copy');
+            } catch (e) {
+                copied = false;
+            }
+
             document.body.removeChild(area);
-            resolve();
+            copied ? resolve() : reject(new Error('copy failed'));
         });
     }
 
@@ -88,12 +96,12 @@
                 '      <div ng-if="attempt.open">',
                 '        <div class="conectaente-history__block" ng-if="attempt.payloadText">',
                 '          <div class="conectaente-history__block-head"><strong>{{ texts.payload }}</strong>',
-                '            <button type="button" class="btn btn-default btn-small" ng-click="copy(attempt.payloadText, attempt, \'payload\')">{{ attempt.copied === \'payload\' ? texts.copied : texts.copy }}</button></div>',
+                '            <button type="button" class="btn btn-default btn-small" ng-click="copy(attempt.payloadText, attempt, \'payload\')">{{ attempt.copied === \'payload\' ? texts.copied : (attempt.copyFailed === \'payload\' ? texts.copyFailed : texts.copy) }}</button></div>',
                 '          <pre>{{ attempt.payloadText }}</pre>',
                 '        </div>',
                 '        <div class="conectaente-history__block">',
                 '          <div class="conectaente-history__block-head"><strong>{{ texts.response }}</strong>',
-                '            <button type="button" class="btn btn-default btn-small" ng-if="attempt.responseText" ng-click="copy(attempt.responseText, attempt, \'response\')">{{ attempt.copied === \'response\' ? texts.copied : texts.copy }}</button></div>',
+                '            <button type="button" class="btn btn-default btn-small" ng-if="attempt.responseText" ng-click="copy(attempt.responseText, attempt, \'response\')">{{ attempt.copied === \'response\' ? texts.copied : (attempt.copyFailed === \'response\' ? texts.copyFailed : texts.copy) }}</button></div>',
                 '          <p ng-if="!attempt.headersText && !attempt.bodyText">{{ texts.noResponse }}</p>',
                 '          <p class="conectaente-history__sub" ng-if="attempt.headersText">{{ texts.headers }}</p>',
                 '          <pre ng-if="attempt.headersText">{{ attempt.headersText }}</pre>',
@@ -160,7 +168,17 @@
                         function (response) {
                             var data = response.data || {};
 
-                            $scope.items = (first ? [] : $scope.items).concat((data.items || []).map(present));
+                            var current = first ? [] : $scope.items;
+                            // com envios novos entre uma página e outra o deslocamento repete o último da anterior
+                            var known = {};
+
+                            current.forEach(function (log) {
+                                known[log.id] = true;
+                            });
+
+                            $scope.items = current.concat((data.items || []).filter(function (log) {
+                                return !known[log.id];
+                            }).map(present));
                             $scope.page = data.page || page;
                             $scope.hasMore = !!data.hasMore;
                             $scope.state = 'ok';
@@ -177,13 +195,21 @@
                 };
 
                 $scope.copy = function (text, attempt, what) {
-                    copyText(text).then(function () {
+                    function flash(field) {
                         $timeout(function () {
-                            attempt.copied = what;
+                            attempt.copied = null;
+                            attempt.copyFailed = null;
+                            attempt[field] = what;
                             $timeout(function () {
-                                attempt.copied = null;
+                                attempt[field] = null;
                             }, 1500);
                         });
+                    }
+
+                    copyText(text).then(function () {
+                        flash('copied');
+                    }, function () {
+                        flash('copyFailed');
                     });
                 };
 

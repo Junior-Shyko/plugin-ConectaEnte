@@ -24,6 +24,7 @@ $config = [
         'truncated' => i::__('Resposta truncada no registro.'),
         'copy' => i::__('Copiar'),
         'copied' => i::__('Copiado'),
+        'copyFailed' => i::__('Não foi possível copiar'),
         'parEditalId' => i::__('ID do edital no CultBR'),
         'requestId' => i::__('ID da requisição (x-request-id)'),
     ],

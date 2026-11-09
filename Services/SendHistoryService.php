@@ -15,6 +15,11 @@ use MapasCulturais\i;
 class SendHistoryService
 {
     const PAGE_SIZE = 20;
+    // acima disso o deslocamento estouraria o inteiro; nenhuma oportunidade chega perto
+    const MAX_PAGE = 1000000;
+
+    // cabeçalhos que carregam credencial ou sessão: não saem na resposta, nem nos históricos já gravados
+    const HIDDEN_HEADERS = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token'];
 
     private $repository;
     private $canView;
@@ -36,7 +41,7 @@ class SendHistoryService
             return ApiResult::error(403, ['message' => $this->t('Você não tem permissão para ver o histórico de envios desta oportunidade.')]);
         }
 
-        $page = max(1, (int) $page);
+        $page = min(self::MAX_PAGE, max(1, (int) $page));
         $logs = $this->repository->findPage($opportunityId, ($page - 1) * self::PAGE_SIZE, self::PAGE_SIZE + 1);
         $hasMore = count($logs) > self::PAGE_SIZE;
         $logs = array_slice($logs, 0, self::PAGE_SIZE);
@@ -84,9 +89,20 @@ class SendHistoryService
             'parEditalId' => $attempt->getParEditalId(),
             'errorMessage' => $attempt->getErrorMessage(),
             'payload' => $attempt->getPayload(),
-            'responseHeaders' => $attempt->getResponseHeaders(),
+            'responseHeaders' => $this->visibleHeaders($attempt->getResponseHeaders()),
             'response' => $attempt->getResponse(),
         ];
+    }
+
+    private function visibleHeaders($headers)
+    {
+        if (!is_array($headers)) {
+            return $headers;
+        }
+
+        $visible = array_diff_key($headers, array_flip(self::HIDDEN_HEADERS));
+
+        return $visible === [] ? null : $visible;
     }
 
     private function label($status)

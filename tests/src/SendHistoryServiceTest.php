@@ -119,6 +119,31 @@ class SendHistoryServiceTest extends TestCase
         $this->assertSame(['x-request-id' => 'req-1'], $item['attempts'][1]['responseHeaders']);
     }
 
+    public function testAHugePageIsCappedInsteadOfOverflowingTheOffset()
+    {
+        $this->repository->expects($this->once())->method('findPage')
+            ->with(7, (SendHistoryService::MAX_PAGE - 1) * SendHistoryService::PAGE_SIZE, 21)->willReturn([]);
+
+        $body = $this->service(true)->page(7, '99999999999999999999')->getBody();
+
+        $this->assertSame(SendHistoryService::MAX_PAGE, $body['page']);
+        $this->assertSame([], $body['items']);
+    }
+
+    public function testCredentialHeadersNeverLeaveInTheResponse()
+    {
+        $this->repository->method('findPage')->willReturn([$this->log(5, 'success')]);
+        $this->repository->method('findAttempts')->willReturn([5 => [
+            $this->attempt(1, 'success', 200, ['id_par_edital' => 9], ['x-request-id' => 'req-1', 'set-cookie' => 's=1', 'authorization' => 'Bearer x']),
+            $this->attempt(2, 'error', 401, null, ['set-cookie' => 's=1']),
+        ]]);
+
+        $attempts = $this->service(true)->page(7, 1)->getBody()['items'][0]['attempts'];
+
+        $this->assertSame(['x-request-id' => 'req-1'], $attempts[0]['responseHeaders']);
+        $this->assertNull($attempts[1]['responseHeaders']);
+    }
+
     public function testALogWithoutAttemptsHasAnEmptyList()
     {
         $this->repository->method('findPage')->willReturn([$this->log(5, 'pending')]);
@@ -180,7 +205,7 @@ class SendHistoryServiceTest extends TestCase
         return $log;
     }
 
-    private function attempt($number, $status, $http, $response = ['id_par_edital' => 9])
+    private function attempt($number, $status, $http, $response = ['id_par_edital' => 9], $headers = ['x-request-id' => 'req-1'])
     {
         $attempt = $this->createMock(SendLogAttempt::class);
         $attempt->method('getAttempt')->willReturn($number);
@@ -195,7 +220,7 @@ class SendHistoryServiceTest extends TestCase
         $attempt->method('getParEditalId')->willReturn('9');
         $attempt->method('getErrorMessage')->willReturn(null);
         $attempt->method('getPayload')->willReturn(['id' => 7]);
-        $attempt->method('getResponseHeaders')->willReturn(['x-request-id' => 'req-1']);
+        $attempt->method('getResponseHeaders')->willReturn($headers);
         $attempt->method('getResponse')->willReturn($response);
 
         return $attempt;
