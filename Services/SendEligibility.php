@@ -2,6 +2,7 @@
 
 namespace ConectaEnte\Services;
 
+use ConectaEnte\Dto\ParInformation;
 use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Payload\OpportunityPayload;
 use ConectaEnte\Repositories\FederativeEntityRepository;
@@ -17,14 +18,17 @@ class SendEligibility
 {
     private $repository;
     private $missingFields;
+    private $parTree;
 
     /**
-     * @param callable|null $missingFields ($opportunity, FederativeEntity) → string[] do que falta
+     * @param callable|null $missingFields ($opportunity, FederativeEntity, ParInformation|null) → string[] do que falta
+     * @param callable|null $parTree       FederativeEntity → ParInformation|null: a árvore do PAR em cache, sem API
      */
-    public function __construct(FederativeEntityRepository $repository, callable $missingFields = null)
+    public function __construct(FederativeEntityRepository $repository, callable $missingFields = null, callable $parTree = null)
     {
         $this->repository = $repository;
         $this->missingFields = $missingFields ?: [self::class, 'missingInPublication'];
+        $this->parTree = $parTree;
     }
 
     /**
@@ -56,7 +60,8 @@ class SendEligibility
             return EligibilityResult::ineligible(EligibilityResult::SEAL_WITHOUT_ENTITY);
         }
 
-        $missing = call_user_func($this->missingFields, $opportunity, $entity);
+        $tree = $this->parTree ? call_user_func($this->parTree, $entity) : null;
+        $missing = call_user_func($this->missingFields, $opportunity, $entity, $tree);
 
         if ($missing) {
             return EligibilityResult::ineligible(EligibilityResult::MISSING_FIELDS, $missing);
@@ -79,11 +84,12 @@ class SendEligibility
     }
 
     /**
-     * Requisitos do edital (PT-BR, validados no publish) mais os campos do contrato que o payload deixa nulos.
+     * Requisitos do edital (PT-BR, validados no publish, com a cadeia do PAR se houver árvore) mais os campos do
+     * contrato que o payload deixa nulos.
      */
-    public static function missingInPublication($opportunity, FederativeEntity $entity)
+    public static function missingInPublication($opportunity, FederativeEntity $entity, ParInformation $tree = null)
     {
-        $requirements = array_keys((new PublicationRequirements())->missingFields($opportunity));
+        $requirements = array_keys((new PublicationRequirements())->missingFields($opportunity, $tree));
         $payload = new OpportunityPayload();
 
         return array_merge($requirements, $payload->missing($payload->build($opportunity, $entity)));

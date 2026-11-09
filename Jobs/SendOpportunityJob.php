@@ -4,6 +4,7 @@ namespace ConectaEnte\Jobs;
 
 use ConectaEnte\Config;
 use ConectaEnte\Metadata\CultBrMetadata;
+use ConectaEnte\Plugin;
 use ConectaEnte\Repositories\FederativeEntityRepository;
 use ConectaEnte\Services\OpportunitySender;
 use ConectaEnte\Services\SendEligibility;
@@ -49,7 +50,7 @@ class SendOpportunityJob extends JobType
                 return $this->finish($job, SendOutcome::ABANDONED);
             }
 
-            $sender = new OpportunitySender(Client::fromConfig(), new OpportunityPayload(), new SendEligibility(new FederativeEntityRepository()), Config::isLive());
+            $sender = new OpportunitySender(Client::fromConfig(), new OpportunityPayload(), new SendEligibility(new FederativeEntityRepository(), null, [Plugin::class, 'cachedParTree']), Config::isLive());
             $report = $sender->send($opportunity, $entity, $attempt, Config::maxAttempts());
 
             if ($report->getOutcome() === SendOutcome::PENDING) {

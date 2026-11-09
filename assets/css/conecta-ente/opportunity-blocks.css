@@ -74,3 +74,16 @@
 .conectaente-block__table input[type="number"] {
     max-width: 9rem;
 }
+
+.conectaente-par {
+    padding: 5px;
+    border: 1px solid #c3c3c3;
+    border-radius: 8px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    background: #f4f4f4;
+}
+
+.conectaente-paragraf {
+    margin: 10px; padding: 10px;
+}
