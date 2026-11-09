@@ -207,7 +207,7 @@ class VocabularyTest extends TestCase
         $this->assertSame('Enviado', \ConectaEnte\Vocabulary\SendOutcome::label('success'));
         $this->assertSame('Falhou', \ConectaEnte\Vocabulary\SendOutcome::label('error'));
         $this->assertSame('Simulado', \ConectaEnte\Vocabulary\SendOutcome::label('simulated'));
-        $this->assertSame('Substituído', \ConectaEnte\Vocabulary\SendOutcome::label('abandoned'));
+        $this->assertSame('Descartado', \ConectaEnte\Vocabulary\SendOutcome::label('abandoned'));
         $this->assertSame('Recusado', \ConectaEnte\Vocabulary\SendOutcome::label('rejected'));
     }
 }

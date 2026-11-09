@@ -109,7 +109,7 @@ class SendHistoryServiceTest extends TestCase
 
         $item = $this->service(true)->page(7, 1)->getBody()['items'][0];
 
-        $this->assertSame('Substituído', $item['statusLabel']);
+        $this->assertSame('Descartado', $item['statusLabel']);
         $this->assertSame('11111111-2222-4333-8444-555555555555', $item['requestUuid']);
         $this->assertSame(3, $item['userId']);
         $this->assertCount(2, $item['attempts']);

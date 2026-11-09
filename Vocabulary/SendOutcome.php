@@ -34,8 +34,8 @@ class SendOutcome extends AbstractVocabulary
             self::SUCCESS => 'Enviado',
             self::ERROR => 'Falhou',
             self::SIMULATED => 'Simulado',
-            // também cobre ente ou oportunidade apagados e a inelegibilidade na execução; o rótulo segue a v7
-            self::ABANDONED => 'Substituído',
+            // cobre envio substituído por outro, ente ou oportunidade apagados e inelegibilidade na execução: por isso não é «Substituído», o rótulo da v7
+            self::ABANDONED => 'Descartado',
             self::REJECTED => 'Recusado',
         ];
     }
