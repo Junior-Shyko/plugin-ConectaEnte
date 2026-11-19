@@ -17,6 +17,7 @@ $choices = [
 ];
 ?>
 <div id="conecta-ente-cultbr" class="aba-content">
+    <?php $this->part('conecta-ente/opportunity-send-status', ['entity' => $entity]); ?>
     <p class="registration-help">
         <?php i::_e('Dados que o CultBR (Conecta Ente) exige do edital de ente federado e que o Mapas Culturais não tem. Eles serão enviados junto com a oportunidade.'); ?>
     </p>

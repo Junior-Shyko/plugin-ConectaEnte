@@ -339,6 +339,16 @@ class Plugin extends \MapasCulturais\Plugin
     }
 
     /**
+     * As pendências do edital com o texto da publicação (chave => mensagens), para a tela de situação do envio.
+     */
+    public static function requirementMessages($opportunity)
+    {
+        $entity = self::sealedEntity($opportunity);
+
+        return (new PublicationRequirements())->missingFields($opportunity, $entity ? self::cachedParTree($entity) : null);
+    }
+
+    /**
      * Pendências na publicação. O front (AJAX, como o editable.js) recebe 200 com `error: true`, o formato de
      * validação do core, porque um 400 cairia no `error:` do jQuery e perderia os campos. Quem não é o front
      * recebe 400, para que um cliente de API não confunda o bloqueio com uma publicação feita.

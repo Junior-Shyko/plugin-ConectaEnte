@@ -8,7 +8,9 @@ use ConectaEnte\Entities\FederativeEntity;
 use ConectaEnte\Http\ParInformationResult;
 use ConectaEnte\Plugin;
 use ConectaEnte\Repositories\SendLogRepository;
+use ConectaEnte\Services\SendEligibility;
 use ConectaEnte\Services\SendHistoryService;
+use ConectaEnte\Services\SendStatusService;
 use ConectaEnte\Services\FederativeEntityService;
 use MapasCulturais\App;
 
@@ -91,6 +93,33 @@ class ConectaEnteController extends \MapasCulturais\Controller
         }
 
         $this->json($result->toArray());
+    }
+
+    /**
+     * Situação do envio da oportunidade: a elegibilidade de agora e o último envio. Só o cache do PAR, sem API.
+     */
+    public function GET_status()
+    {
+        $this->requireAuthentication();
+
+        $opportunity = App::i()->repo('Opportunity')->find($this->opportunityId());
+
+        if (!$opportunity) {
+            $this->json(['message' => 'Oportunidade não encontrada.'], 404);
+
+            return;
+        }
+
+        $service = new SendStatusService(
+            new SendEligibility(new FederativeEntityRepository(), null, [Plugin::class, 'cachedParTree']),
+            new SendLogRepository(),
+            [Plugin::class, 'canViewSendHistory'],
+            [Plugin::class, 'requirementMessages']
+        );
+
+        $result = $service->status($opportunity);
+
+        $this->json($result->getBody(), $result->getStatus());
     }
 
     /**
