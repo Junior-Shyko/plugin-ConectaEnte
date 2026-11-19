@@ -199,4 +199,15 @@ class VocabularyTest extends TestCase
         $this->assertFalse(AffirmativeAction::isExclusive('bonus_agentes'));
         $this->assertSame(140, AffirmativeAction::otherLegislationMaxLength());
     }
+
+    // rótulos da aba de histórico (#55), iguais aos da v7
+    public function testSendOutcomeLabelsMatchTheHistoryTab()
+    {
+        $this->assertSame('Em andamento', \ConectaEnte\Vocabulary\SendOutcome::label('pending'));
+        $this->assertSame('Enviado', \ConectaEnte\Vocabulary\SendOutcome::label('success'));
+        $this->assertSame('Falhou', \ConectaEnte\Vocabulary\SendOutcome::label('error'));
+        $this->assertSame('Simulado', \ConectaEnte\Vocabulary\SendOutcome::label('simulated'));
+        $this->assertSame('Descartado', \ConectaEnte\Vocabulary\SendOutcome::label('abandoned'));
+        $this->assertSame('Recusado', \ConectaEnte\Vocabulary\SendOutcome::label('rejected'));
+    }
 }

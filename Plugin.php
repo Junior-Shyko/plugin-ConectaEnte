@@ -10,6 +10,7 @@ use ConectaEnte\Jobs\ParInformationSyncJob;
 use ConectaEnte\Jobs\SendOpportunityJob;
 use ConectaEnte\Metadata\CultBrMetadata;
 use ConectaEnte\Repositories\FederativeEntityRepository;
+use ConectaEnte\Repositories\SendLogRepository;
 use ConectaEnte\Services\FederativeEntityService;
 use ConectaEnte\Services\OpportunitySealGuard;
 use ConectaEnte\Services\ParInformationService;
@@ -381,11 +382,66 @@ class Plugin extends \MapasCulturais\Plugin
 
             $this->part('conecta-ente/opportunity-cultbr', ['entity' => $opportunity]);
         });
+
+        $this->hookSendHistoryTab($app);
+    }
+
+    // aba própria (#55): fica onde há ente selado ou histórico, porque tirar o selo não apaga o que já foi enviado
+    private function hookSendHistoryTab(App $app)
+    {
+        $app->hook('GET(opportunity.edit):before', function () use ($app) {
+            $opportunity = empty($this->urlData['id']) ? null : $this->repository->find($this->urlData['id']);
+
+            if ($opportunity === null || !Plugin::showsSendHistory($opportunity)) {
+                return;
+            }
+
+            $app->view->enqueueStyle('app', 'conectaente-send-history', 'css/conecta-ente/send-history.css');
+            $app->view->enqueueScript('app', 'conectaente-send-history', 'js/conecta-ente/send-history.js', ['entity.module.opportunity']);
+        });
+
+        $app->hook('template(opportunity.edit.tabs):end', function () {
+            if (!Plugin::showsSendHistory($this->controller->requestedEntity)) {
+                return;
+            }
+
+            $this->part('tab', ['id' => 'conecta-ente-send-history', 'label' => i::__('Histórico de envio')]);
+        });
+
+        $app->hook('template(opportunity.edit.tabs-content):end', function () {
+            $opportunity = $this->controller->requestedEntity;
+
+            if (!Plugin::showsSendHistory($opportunity)) {
+                return;
+            }
+
+            $this->part('conecta-ente/opportunity-send-history', ['entity' => $opportunity]);
+        });
+    }
+
+    public static function showsSendHistory($opportunity)
+    {
+        return self::sealedEntity($opportunity) !== null || (new SendLogRepository())->hasAny($opportunity->id);
     }
 
     public static function sealedEntity($opportunity)
     {
         return (new SealedOpportunity(new FederativeEntityRepository()))->entityFor($opportunity);
+    }
+
+    /**
+     * Com a oportunidade viva, quem a edita vê o histórico. O histórico sobrevive à exclusão dela (sem FK),
+     * e sem oportunidade não há permissão de edição para conferir: só o saasSuperAdmin.
+     */
+    public static function canViewSendHistory($opportunityId)
+    {
+        $opportunity = App::i()->repo('Opportunity')->find((int) $opportunityId);
+
+        if ($opportunity) {
+            return $opportunity->canUser('modify');
+        }
+
+        return self::canManage();
     }
 
     public static function canManage()
