@@ -117,7 +117,8 @@ class SendStatusService
             case SendOutcome::PENDING:
                 return $this->t('O envio está em andamento ou aguarda uma nova tentativa.');
             case SendOutcome::ABANDONED:
-                return $this->t('O envio foi descartado: a oportunidade ou o ente mudou antes de ele terminar.');
+                // dois caminhos levam a «abandoned»: envio substituído por um mais novo, ou oportunidade/ente que mudou antes de ele terminar
+                return $this->t('O envio foi descartado: foi substituído por um envio mais novo, ou a oportunidade ou o ente mudou antes de ele terminar.');
             case SendOutcome::REJECTED:
                 return $this->t('O CultBR recusou o edital.');
             case SendOutcome::ERROR:
