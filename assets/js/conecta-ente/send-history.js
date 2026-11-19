@@ -61,6 +61,73 @@
         });
     }
 
+    module.directive('conectaEnteSendStatus', ['$http', function ($http) {
+        return {
+            restrict: 'E',
+            scope: true,
+            template: [
+                '<div class="conectaente-status">',
+                '  <p class="conectaente-status__state" ng-if="state === \'loading\'">{{ texts.loading }}</p>',
+                '  <div class="conectaente-status__state" ng-if="state === \'failed\'">',
+                '    <p>{{ texts.failed }}</p>',
+                '    <button type="button" class="btn btn-default btn-small" ng-click="load()">{{ texts.retry }}</button>',
+                '  </div>',
+                '  <div class="conectaente-status__box" ng-if="state === \'ok\' && status.visible" ng-class="\'conectaente-status__box--\' + status.state">',
+                '    <strong class="conectaente-history__badge" ng-class="\'conectaente-history__badge--\' + status.state">{{ status.label }}</strong>',
+                '    <span class="conectaente-status__message" ng-if="status.message">{{ status.message }}</span>',
+                '    <ul class="conectaente-status__missing" ng-if="status.missing.length"><li ng-repeat="item in status.missing track by $index">{{ item }}</li></ul>',
+                '    <p class="conectaente-status__last" ng-if="status.lastSend">',
+                '      {{ texts.lastSend }}: <strong>{{ status.lastSend.statusLabel }}</strong> {{ lastAt }}{{ lastHttp }}',
+                '      <span ng-if="status.lastSend.errorMessage"> — {{ status.lastSend.errorMessage }}</span>',
+                '      <span ng-if="status.lastSend.parEditalId"> — {{ lastEdital }}</span>',
+                '    </p>',
+                '    <button type="button" class="btn btn-default btn-small" ng-if="hasHistoryTab" ng-click="openHistory()">{{ texts.history }}</button>',
+                '  </div>',
+                '</div>'
+            ].join('\n'),
+            link: function ($scope, element, attrs) {
+                var config = JSON.parse(attrs.config);
+                var opportunityId = MapasCulturais.entity.object.id;
+
+                $scope.texts = config.texts;
+                $scope.state = 'loading';
+                $scope.status = null;
+
+                $scope.load = function () {
+                    $scope.state = 'loading';
+
+                    $http.get(MapasCulturais.createUrl('conecta-ente', 'status', [opportunityId])).then(
+                        function (response) {
+                            var last = response.data && response.data.lastSend;
+
+                            $scope.status = response.data;
+                            $scope.lastAt = last && last.at ? format(config.texts.on, [new Date(last.at).toLocaleString('pt-BR')]) : '';
+                            $scope.lastHttp = last && last.httpStatus ? ' · ' + format(config.texts.httpStatus, [last.httpStatus]) : '';
+                            $scope.lastEdital = last && last.parEditalId ? format(config.texts.parEditalId, [last.parEditalId]) : '';
+                            $scope.state = 'ok';
+                        },
+                        function () {
+                            $scope.state = 'failed';
+                        }
+                    );
+                };
+
+                // a aba do histórico só existe quando há ente selado ou envio gravado
+                $scope.hasHistoryTab = !!document.querySelector('a[href="#conecta-ente-send-history"]');
+
+                $scope.openHistory = function () {
+                    var tab = document.querySelector('a[href="#conecta-ente-send-history"]');
+
+                    if (tab) {
+                        tab.click();
+                    }
+                };
+
+                $scope.load();
+            }
+        };
+    }]);
+
     module.directive('conectaEnteSendHistory', ['$http', '$timeout', function ($http, $timeout) {
         return {
             restrict: 'E',
