@@ -55,7 +55,9 @@
 .conectaente-history__badge--success { background: #2e7d32; }
 .conectaente-history__badge--error,
 .conectaente-history__badge--rejected { background: #c62828; }
-.conectaente-history__badge--pending { background: #f9a825; color: #333; }
+.conectaente-history__badge--pending,
+.conectaente-history__badge--ineligible,
+.conectaente-history__badge--not_sent { background: #f9a825; color: #333; }
 .conectaente-history__badge--simulated { background: #1565c0; }
 
 .conectaente-history__body {
@@ -107,4 +109,37 @@
 
 .conectaente-history__warning {
     color: #8a6d00;
+}
+
+.conectaente-status {
+    margin: 0 0 1rem;
+}
+
+.conectaente-status__box {
+    border: 1px solid #ddd;
+    border-left-width: 4px;
+    border-radius: 4px;
+    padding: .6rem .8rem;
+}
+
+.conectaente-status__box--success { border-left-color: #2e7d32; }
+.conectaente-status__box--error,
+.conectaente-status__box--rejected { border-left-color: #c62828; }
+.conectaente-status__box--pending,
+.conectaente-status__box--ineligible,
+.conectaente-status__box--not_sent { border-left-color: #f9a825; }
+.conectaente-status__box--simulated { border-left-color: #1565c0; }
+.conectaente-status__box--abandoned { border-left-color: #757575; }
+
+.conectaente-status__message {
+    margin-left: .5rem;
+}
+
+.conectaente-status__missing {
+    margin: .5rem 0 0 1.25rem;
+}
+
+.conectaente-status__last {
+    color: #666;
+    margin: .5rem 0;
 }
