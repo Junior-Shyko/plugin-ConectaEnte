@@ -166,6 +166,18 @@ class SendStatusServiceTest extends TestCase
         $this->assertSame('Erro local', $body['lastSend']['errorMessage']);
     }
 
+    public function testADiscardedSendMentionsBothWaysItCanHappen()
+    {
+        $this->eligibility->method('check')->willReturn(EligibilityResult::eligible($this->createMock(FederativeEntity::class)));
+
+        $body = $this->serviceWith($this->repositoryWith('abandoned'))->status(new FakeOpportunity())->getBody();
+
+        $this->assertSame(
+            'O envio foi descartado: foi substituído por um envio mais novo, ou a oportunidade ou o ente mudou antes de ele terminar.',
+            $body['message']
+        );
+    }
+
     public function testSimulatedNeverReadsAsSuccess()
     {
         $this->eligibility->method('check')->willReturn(EligibilityResult::eligible($this->createMock(FederativeEntity::class)));
