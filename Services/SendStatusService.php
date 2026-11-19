@@ -121,7 +121,8 @@ class SendStatusService
             case SendOutcome::REJECTED:
                 return $this->t('O CultBR recusou o edital.');
             case SendOutcome::ERROR:
-                return $this->t('O envio falhou depois de esgotar as tentativas.');
+                // também cobre falha local imprevista na primeira tentativa: o motivo vem do erro da última tentativa
+                return $this->t('O envio falhou.');
             default:
                 return null;
         }
